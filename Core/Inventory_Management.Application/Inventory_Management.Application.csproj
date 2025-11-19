@@ -1,0 +1,104 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Features\Handlers\Move_TypesHandler\CompaniesHandler\**" />
+    <Compile Remove="Features\Handlers\Move_TypesHandler\Delivery_RulesHandler\**" />
+    <Compile Remove="Features\Handlers\Move_TypesHandler\InventoriesHandler\**" />
+    <Compile Remove="Features\Queries\CompaniesHandler\**" />
+    <Compile Remove="Features\Queries\Delivery_RulesHandler\**" />
+    <Compile Remove="Features\Queries\InventoriesHandler\**" />
+    <Compile Remove="Features\Queries\ProductsHandler\**" />
+    <Compile Remove="Features\Queries\RolesHandler\**" />
+    <Compile Remove="Features\Queries\Stock_MovementsHandler\**" />
+    <Compile Remove="Features\Queries\SuppliersHandler\**" />
+    <Compile Remove="Features\Queries\Suppliers_DeliveryHandler\**" />
+    <Compile Remove="Features\Queries\Unit_TypesHandler\**" />
+    <Compile Remove="Features\Queries\UsersHandler\**" />
+    <Compile Remove="Features\Results\CompaniesHandler\**" />
+    <Compile Remove="Features\Results\Delivery_RulesHandler\**" />
+    <Compile Remove="Features\Results\InventoriesHandler\**" />
+    <Compile Remove="Features\Results\ProductsHandler\**" />
+    <Compile Remove="Features\Results\RolesHandler\**" />
+    <Compile Remove="Features\Results\Stock_MovementsHandler\**" />
+    <Compile Remove="Features\Results\SuppliersHandler\**" />
+    <Compile Remove="Features\Results\Suppliers_DeliveryHandler\**" />
+    <Compile Remove="Features\Results\Unit_TypesHandler\**" />
+    <Compile Remove="Features\Results\UsersHandler\**" />
+    <EmbeddedResource Remove="Features\Handlers\Move_TypesHandler\CompaniesHandler\**" />
+    <EmbeddedResource Remove="Features\Handlers\Move_TypesHandler\Delivery_RulesHandler\**" />
+    <EmbeddedResource Remove="Features\Handlers\Move_TypesHandler\InventoriesHandler\**" />
+    <EmbeddedResource Remove="Features\Queries\CompaniesHandler\**" />
+    <EmbeddedResource Remove="Features\Queries\Delivery_RulesHandler\**" />
+    <EmbeddedResource Remove="Features\Queries\InventoriesHandler\**" />
+    <EmbeddedResource Remove="Features\Queries\ProductsHandler\**" />
+    <EmbeddedResource Remove="Features\Queries\RolesHandler\**" />
+    <EmbeddedResource Remove="Features\Queries\Stock_MovementsHandler\**" />
+    <EmbeddedResource Remove="Features\Queries\SuppliersHandler\**" />
+    <EmbeddedResource Remove="Features\Queries\Suppliers_DeliveryHandler\**" />
+    <EmbeddedResource Remove="Features\Queries\Unit_TypesHandler\**" />
+    <EmbeddedResource Remove="Features\Queries\UsersHandler\**" />
+    <EmbeddedResource Remove="Features\Results\CompaniesHandler\**" />
+    <EmbeddedResource Remove="Features\Results\Delivery_RulesHandler\**" />
+    <EmbeddedResource Remove="Features\Results\InventoriesHandler\**" />
+    <EmbeddedResource Remove="Features\Results\ProductsHandler\**" />
+    <EmbeddedResource Remove="Features\Results\RolesHandler\**" />
+    <EmbeddedResource Remove="Features\Results\Stock_MovementsHandler\**" />
+    <EmbeddedResource Remove="Features\Results\SuppliersHandler\**" />
+    <EmbeddedResource Remove="Features\Results\Suppliers_DeliveryHandler\**" />
+    <EmbeddedResource Remove="Features\Results\Unit_TypesHandler\**" />
+    <EmbeddedResource Remove="Features\Results\UsersHandler\**" />
+    <None Remove="Features\Handlers\Move_TypesHandler\CompaniesHandler\**" />
+    <None Remove="Features\Handlers\Move_TypesHandler\Delivery_RulesHandler\**" />
+    <None Remove="Features\Handlers\Move_TypesHandler\InventoriesHandler\**" />
+    <None Remove="Features\Queries\CompaniesHandler\**" />
+    <None Remove="Features\Queries\Delivery_RulesHandler\**" />
+    <None Remove="Features\Queries\InventoriesHandler\**" />
+    <None Remove="Features\Queries\ProductsHandler\**" />
+    <None Remove="Features\Queries\RolesHandler\**" />
+    <None Remove="Features\Queries\Stock_MovementsHandler\**" />
+    <None Remove="Features\Queries\SuppliersHandler\**" />
+    <None Remove="Features\Queries\Suppliers_DeliveryHandler\**" />
+    <None Remove="Features\Queries\Unit_TypesHandler\**" />
+    <None Remove="Features\Queries\UsersHandler\**" />
+    <None Remove="Features\Results\CompaniesHandler\**" />
+    <None Remove="Features\Results\Delivery_RulesHandler\**" />
+    <None Remove="Features\Results\InventoriesHandler\**" />
+    <None Remove="Features\Results\ProductsHandler\**" />
+    <None Remove="Features\Results\RolesHandler\**" />
+    <None Remove="Features\Results\Stock_MovementsHandler\**" />
+    <None Remove="Features\Results\SuppliersHandler\**" />
+    <None Remove="Features\Results\Suppliers_DeliveryHandler\**" />
+    <None Remove="Features\Results\Unit_TypesHandler\**" />
+    <None Remove="Features\Results\UsersHandler\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Features\Commands\CategoriesCommand\" />
+    <Folder Include="Features\Commands\UsersRolesCommand\" />
+    <Folder Include="Features\Handlers\Move_TypesHandler\" />
+    <Folder Include="Features\Handlers\UserRolesHandler\" />
+    <Folder Include="Features\Queries\Move_TypesQuery\" />
+    <Folder Include="Features\Queries\UserRolesQuery\" />
+    <Folder Include="Features\Results\Move_TypesResult\" />
+    <Folder Include="Features\Results\UserRolesResult\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.0" />
+    <PackageReference Include="MediatR" Version="13.0.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Infrastructure\Inventory_Management.Persistance\Inventory_Management.Persistance.csproj" />
+    <ProjectReference Include="..\Inventory_Management.Domain\Inventory_Management.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
