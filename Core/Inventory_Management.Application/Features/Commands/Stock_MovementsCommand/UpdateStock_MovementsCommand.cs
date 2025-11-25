@@ -12,7 +12,7 @@ namespace Inventory_Management.Application.Features.Commands.Stock_MovementsComm
         public Guid UserId { get; set; }
         public int Quantity { get; set; }
         public float Payment { get; set; }
-        public float Description { get; set; }
+        public string? Description { get; set; }
         public bool IsActive { get; set; }
     }
 }

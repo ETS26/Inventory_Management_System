@@ -99,7 +99,6 @@ namespace Inventory_Management.Persistance.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("RuleDescription")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RuleName")
@@ -208,7 +207,6 @@ namespace Inventory_Management.Persistance.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
@@ -269,8 +267,8 @@ namespace Inventory_Management.Persistance.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<float>("Description")
-                        .HasColumnType("real");
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("InventoryId")
                         .HasColumnType("uniqueidentifier");
@@ -283,9 +281,6 @@ namespace Inventory_Management.Persistance.Migrations
 
                     b.Property<float>("Payment")
                         .HasColumnType("real");
-
-                    b.Property<Guid?>("ProductsId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
@@ -306,8 +301,6 @@ namespace Inventory_Management.Persistance.Migrations
                     b.HasIndex("InventoryId");
 
                     b.HasIndex("MoveTypeId");
-
-                    b.HasIndex("ProductsId");
 
                     b.HasIndex("SupplierId");
 
@@ -498,7 +491,7 @@ namespace Inventory_Management.Persistance.Migrations
                         .IsRequired();
 
                     b.HasOne("Inventory_Management.Domain.Entities.Products", "Product")
-                        .WithMany("Inventories")
+                        .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -546,10 +539,6 @@ namespace Inventory_Management.Persistance.Migrations
                         .HasForeignKey("MoveTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("Inventory_Management.Domain.Entities.Products", null)
-                        .WithMany("Stock_Movements")
-                        .HasForeignKey("ProductsId");
 
                     b.HasOne("Inventory_Management.Domain.Entities.Suppliers", "Supplier")
                         .WithMany("Stock_Movements")
@@ -639,13 +628,6 @@ namespace Inventory_Management.Persistance.Migrations
 
             modelBuilder.Entity("Inventory_Management.Domain.Entities.Move_Types", b =>
                 {
-                    b.Navigation("Stock_Movements");
-                });
-
-            modelBuilder.Entity("Inventory_Management.Domain.Entities.Products", b =>
-                {
-                    b.Navigation("Inventories");
-
                     b.Navigation("Stock_Movements");
                 });
 

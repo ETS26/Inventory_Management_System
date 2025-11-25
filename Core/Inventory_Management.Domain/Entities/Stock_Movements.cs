@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Inventory_Management.Domain.Entities
 {
     public class Stock_Movements : BaseEntity
@@ -14,7 +16,7 @@ namespace Inventory_Management.Domain.Entities
         public virtual Users User { get; set; }
         public int Quantity { get; set; }
         public float Payment { get; set; }
-        public float Description { get; set; }
+        public string? Description { get; set; }
 
     }
 }

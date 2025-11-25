@@ -6,12 +6,17 @@ namespace Inventory_Management.Application.Features.Results.Stock_MovementsResul
 {
     public class GetStock_MovementsQueryResult : BaseEntity
     {
-        public Guid InventoryId { get; set; }
-        public Guid MoveTypeId { get; set; }
-        public Guid SupplierId { get; set; }
-        public Guid UserId { get; set; }
-        public int Quantity { get; set; }
-        public float Payment { get; set; }
-        public float Description { get; set; }
+        // --- Görüntülenecek Ýsimler (DTO Mantýðý) ---
+        public string ProductName { get; set; }      // Hangi Ürün?
+        public string MoveTypeName { get; set; }     // Giriþ mi Çýkýþ mý?
+        public string UserName { get; set; }         // Kim yaptý?
+        public string SupplierName { get; set; }     // Hangi Tedarikçi? (Varsa)
+
+        // --- Sayýsal Veriler ---
+        public int Quantity { get; set; }            // Adet
+        public float Payment { get; set; }           // HESAPLANACAK TUTAR (Miktar x Fiyat)
+
+        // --- Düzeltilen Alan ---
+        public string? Description { get; set; }      
     }
 }

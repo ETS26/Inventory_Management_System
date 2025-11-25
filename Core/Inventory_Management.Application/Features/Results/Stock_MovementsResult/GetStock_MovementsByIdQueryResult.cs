@@ -12,6 +12,6 @@ namespace Inventory_Management.Application.Features.Results.Stock_MovementsResul
         public Guid UserId { get; set; }
         public int Quantity { get; set; }
         public float Payment { get; set; }
-        public float Description { get; set; }
+        public string? Description { get; set; }
     }
 }

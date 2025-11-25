@@ -1,0 +1,336 @@
+/* =========================================
+   1. VARIABLES & GLOBAL RESET
+   ========================================= */
+:root {
+    --main-bg-color: #0d6efd; /* InventoryPro Mavisi */
+    --main-text-color: #0d6efd;
+    --second-text-color: #6c757d; /* Gri Metin */
+    --second-bg-color: #f4f6f9; /* Sayfa Arka Planı */
+    --sidebar-width: 260px;
+    --sidebar-bg: #ffffff;
+    --navbar-height: 80px;
+}
+
+body {
+    background-color: var(--second-bg-color);
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    overflow-x: hidden;
+    color: #333;
+}
+
+/* =========================================
+   2. LAYOUT & WRAPPER
+   ========================================= */
+#wrapper {
+    overflow-x: hidden;
+    display: flex;
+}
+
+#page-content-wrapper {
+    min-width: 100vw;
+    margin-left: 0;
+    transition: margin 0.25s ease-out;
+    padding-left: 0;
+    /* Sayfa Yüklenme Animasyonu */
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+.container-fluid {
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+}
+
+/* =========================================
+   3. SIDEBAR STYLES
+   ========================================= */
+#sidebar-wrapper {
+    min-height: 100vh;
+    margin-left: -15rem;
+    transition: margin 0.25s ease-out;
+    width: var(--sidebar-width);
+    position: fixed;
+    z-index: 1000;
+    height: 100%;
+    background-color: var(--sidebar-bg);
+    box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+    /* Footer'ı en alta itmek için Flex yapı */
+    display: flex;
+    flex-direction: column;
+}
+
+    #sidebar-wrapper .sidebar-heading {
+        padding: 1.5rem 1.25rem;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--main-text-color);
+        text-align: center;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    #sidebar-wrapper .list-group {
+        width: var(--sidebar-width);
+        flex-grow: 1; /* Menü alanı boşluğu doldursun */
+    }
+
+/* Sidebar Linkleri */
+.list-group-item {
+    border: none;
+    padding: 12px 30px;
+    margin-bottom: 5px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #555;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+    .list-group-item i {
+        width: 25px; /* İkon hizalaması */
+    }
+
+    .list-group-item:hover {
+        background-color: #f8f9fa;
+        color: var(--main-bg-color);
+        transform: translateX(5px);
+    }
+
+    .list-group-item.active {
+        background-color: #e7f1ff;
+        color: var(--main-bg-color);
+        border-right: 4px solid var(--main-bg-color);
+        font-weight: 700;
+    }
+
+    .list-group-item.text-danger:hover {
+        background-color: #fee2e2;
+        color: #dc3545;
+    }
+
+/* Sidebar Footer */
+.sidebar-footer {
+    margin-top: auto; /* En alta yapıştır */
+    padding: 20px;
+    border-top: 1px solid #eee;
+    background-color: #fdfdfd;
+    font-size: 0.8rem;
+    color: #999;
+    text-align: center;
+}
+
+/* =========================================
+   4. NAVBAR & USER PROFILE
+   ========================================= */
+.navbar {
+    height: var(--navbar-height);
+    background-color: #fff !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+}
+
+/* Kullanıcı Profili "Hap" Tasarımı */
+.user-profile-section {
+    display: flex;
+    align-items: center;
+    padding: 5px 15px;
+    background-color: #f8f9fa;
+    border-radius: 50px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    min-width: 200px;
+    justify-content: flex-end;
+}
+
+    .user-profile-section:hover {
+        background-color: #fff;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transform: translateY(-1px);
+    }
+
+.profile-circle {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #0d6efd, #0043a8);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 5px rgba(13, 110, 253, 0.3);
+    border: 2px solid #fff;
+    margin-left: 10px;
+}
+
+#navFullName {
+    font-size: 0.9rem;
+    color: #333;
+    margin-bottom: 0;
+}
+
+#navCompany {
+    font-size: 0.7rem;
+    color: var(--main-text-color);
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* =========================================
+   5. CARDS, TABLES & UI ELEMENTS
+   ========================================= */
+/* Kart Hover Efekti */
+.card-hover:hover, .hover-shadow:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+    transition: all 0.3s ease;
+    border-color: rgba(13, 110, 253, 0.3) !important;
+}
+
+.transition {
+    transition: all 0.3s ease;
+}
+
+/* İkon Kutuları */
+.icon-box, .icon-box-sm {
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-box {
+    width: 50px;
+    height: 50px;
+}
+
+.icon-box-sm {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+    border-radius: 10px;
+}
+
+/* Arka Plan Renkleri */
+.bg-primary-light {
+    background-color: #cfe2ff;
+    color: #0d6efd;
+}
+
+.bg-danger-light {
+    background-color: #f8d7da;
+    color: #dc3545;
+}
+
+.bg-success-light {
+    background-color: #d1e7dd;
+    color: #198754;
+}
+
+.bg-purple-light {
+    background-color: #e0cffc;
+    color: #6f42c1;
+}
+
+.text-purple {
+    color: #6f42c1;
+}
+
+/* Tablo Tasarımı */
+.table thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: #888;
+    border-bottom: 1px solid #eee;
+}
+
+.table td {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* Ürün Avatarı */
+.product-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    border-radius: 50%;
+    font-size: 1rem;
+}
+
+/* Badge */
+.custom-badge {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* FullCalendar Özelleştirmeleri */
+.fc .fc-button-primary {
+    background-color: var(--main-bg-color);
+    border-color: var(--main-bg-color);
+}
+
+.fc .fc-day-today {
+    background-color: rgba(13, 110, 253, 0.05) !important;
+}
+
+/* =========================================
+   6. ANIMATIONS
+   ========================================= */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================================
+   7. RESPONSIVE (MOBİL UYUM)
+   ========================================= */
+/* Toggled State (Menü Açık/Kapalı) */
+#wrapper.toggled #sidebar-wrapper {
+    margin-left: 0;
+}
+
+#wrapper.toggled #page-content-wrapper {
+    margin-left: var(--sidebar-width);
+}
+
+@media (min-width: 768px) {
+    #sidebar-wrapper {
+        margin-left: 0;
+    }
+
+    #page-content-wrapper {
+        margin-left: var(--sidebar-width);
+        min-width: 0;
+        width: 100%;
+    }
+
+    #wrapper.toggled #sidebar-wrapper {
+        margin-left: -15rem;
+    }
+
+    #wrapper.toggled #page-content-wrapper {
+        margin-left: 0;
+    }
+}

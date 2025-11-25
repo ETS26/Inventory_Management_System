@@ -18,22 +18,40 @@ namespace Inventory_Management.Application.Features.Handlers.InventoriesHandler
         }
         public async Task<List<GetInventoriesQueryResult>> Handle(GetInventoriesQuery request, CancellationToken cancellationToken)
         {
-            var val = await _context.Inventories.ToListAsync();
+            var val = await _context.Inventories
+        .Include(x => x.Product)            // Ürün bilgilerini getir
+        .ThenInclude(x => x.Category)       // Ürünün Kategori bilgisini getir
+        .Include(x => x.Company)            // Þirket bilgisini getir
+        .ToListAsync(cancellationToken);
+
             return val.Select(x => new GetInventoriesQueryResult
             {
                 Id = x.Id,
-                CompanyId = x.CompanyId,
+
+                // --- Envanter Temel Bilgileri ---
                 BatchNumber = x.BatchNumber,
-                ProductId = x.ProductId,
                 Quantity = x.Quantity,
                 CriticalStockQuantity = x.CriticalStockQuantity,
                 PurchasePrice = x.PurchasePrice,
                 SalePrice = x.SalePrice,
                 ExpirationDate = x.ExpirationDate,
                 Description = x.Description,
-                CreatedAt = x.CreatedAt,
-                UpdatedAt = x.UpdatedAt,
-                IsActive = x.IsActive
+
+                // --- Ýliþkili Tablolardan Gelen Ýsimler ---
+                // Null kontrolü (?) yaparak hata almayý engelliyoruz
+
+                ProductName = x.Product != null ? x.Product.ProductName : "Tanýmsýz Ürün",
+                Barcode = x.Product != null ? x.Product.Barcode : "-",
+
+                CategoryName = x.Product != null && x.Product.Category != null
+                    ? x.Product.Category.CategoryName
+                    : "-",
+
+                UnitTypeName = x.Product != null && x.Product.UnitType != null
+                    ? x.Product.UnitType.UnitName
+                    : "-",
+
+                CompanyName = x.Company != null ? x.Company.CompanyName : "-"
 
             }).ToList();
         }

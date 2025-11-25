@@ -1,0 +1,134 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stok Hareketleri - InventoryPro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+
+</head>
+<body>
+
+    <div class="d-flex" id="wrapper">
+        <div class="bg-white border-end" id="sidebar-wrapper">
+            <div class="sidebar-heading text-center py-4 primary-text fs-4 fw-bold text-uppercase border-bottom">
+                <i class="fas fa-shopping-cart me-2"></i>InventoryPro
+            </div>
+            <div class="list-group list-group-flush my-3">
+                <a href="dashboard.html" class="list-group-item list-group-item-action bg-transparent second-text fw-bold">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </a>
+                <a href="inventory.html" class="list-group-item list-group-item-action bg-transparent second-text fw-bold">
+                    <i class="fas fa-box me-2"></i>Inventory
+                </a>
+                <a href="stock-movements.html" class="list-group-item list-group-item-action bg-transparent second-text active">
+                    <i class="fas fa-exchange-alt me-2"></i>Stock Movements
+                </a>
+                <a href="#" onclick="logout()" class="list-group-item list-group-item-action bg-transparent text-danger fw-bold mt-4 border-top">
+                    <i class="fas fa-power-off me-2"></i>Logout
+                </a>
+            </div>
+        </div>
+
+        <div id="page-content-wrapper">
+            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom py-3 px-4 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-align-left primary-text fs-4 me-3 cursor-pointer" id="menu-toggle"></i>
+                    <h2 class="fs-4 m-0 fw-bold text-dark">Stok Hareket Geçmişi</h2>
+                </div>
+                <button class="btn btn-primary ms-auto rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addMovementModal">
+                    <i class="fas fa-plus me-2"></i>Hareket Ekle
+                </button>
+            </nav>
+
+            <div class="container-fluid px-4 py-4">
+
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white p-1">
+                            <span class="input-group-text bg-white border-0 ps-3"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" id="searchInput" class="form-control border-0" placeholder="Ürün adı, kullanıcı veya açıklama ara..." onkeyup="filterMovements()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3" id="movementsContainer">
+                    <div class="col-12 text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="text-muted mt-2">Veriler Yükleniyor...</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addMovementModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark ps-2 pt-2">Yeni Stok Hareketi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 pt-3">
+                    <p class="text-muted small mb-4">Stok giriş veya çıkış işlemini buradan kaydedebilirsiniz.</p>
+                    <form id="movementForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-secondary">ÜRÜN</label>
+                            <select class="form-select form-select-lg bg-light border-0" id="inventorySelect" required></select>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-secondary">İŞLEM TİPİ</label>
+                                <select class="form-select form-select-lg bg-light border-0" id="moveTypeSelect" required></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-secondary">MİKTAR</label>
+                                <input type="number" class="form-control form-control-lg bg-light border-0" id="quantityInput" min="1" placeholder="0" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold">TEDARİKÇİ</label>
+                                <select class="form-select" id="supplierSelect">
+                                    <option value="">Tedarikçi yok</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 mt-3">
+                            <label class="form-label fw-bold small text-secondary">AÇIKLAMA</label>
+                            <textarea class="form-control bg-light border-0" id="descriptionInput" rows="3" placeholder="Örn: Fatura No: 12345..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-0 pt-0 pe-4 pb-4">
+                    <button type="button" class="btn btn-light text-muted rounded-pill px-4" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="saveStockMovement()">Kaydet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auth Guard
+        if (!localStorage.getItem('jwtToken')) window.location.href = 'login.html';
+
+        // Toggle Menu
+        document.getElementById("menu-toggle").onclick = function () {
+            document.getElementById("wrapper").classList.toggle("toggled");
+        };
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/script.js"></script>
+
+    <script src="js/stock-movements.js"></script>
+</body>
+</html>

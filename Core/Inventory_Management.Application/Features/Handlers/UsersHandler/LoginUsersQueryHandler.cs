@@ -27,20 +27,29 @@ namespace Inventory_Management.Application.Features.Handlers.UsersHandler
         public async Task<LoginUsersQueryResult> Handle(LoginUsersQuery request, CancellationToken cancellationToken)
         {
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == request.Email, cancellationToken);
+                    .Include(u => u.UsersRoles)       
+                    .ThenInclude(ur => ur.Role)
+                    .Include(u => u.Company)
+                    .FirstOrDefaultAsync(u => u.Email == request.Email, cancellationToken);
 
-            
+
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
             {
                 return LoginUsersQueryResult.Failure("Email veya şifre hatalı.");
             }
 
+            string userRole = user.UsersRoles?.FirstOrDefault()?.Role?.RoleName ?? "Misafir";
+            string userCompany = user.Company?.CompanyName ?? "Şirket Belirtilmemiş";
+            Guid userId = user.Id;
             var tokenResult = GenerateJwtToken(user);
 
             return LoginUsersQueryResult.Success(
                 tokenResult.Token,
                 tokenResult.ExpiresAt,
-                $"{user.FirstName} {user.LastName}"
+                $"{user.FirstName} {user.LastName}",
+                userRole,
+                userCompany,
+                userId
             );
         }
         private (string Token, DateTime ExpiresAt) GenerateJwtToken(Users user)
@@ -48,6 +57,7 @@ namespace Inventory_Management.Application.Features.Handlers.UsersHandler
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim("firstName", user.FirstName),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
