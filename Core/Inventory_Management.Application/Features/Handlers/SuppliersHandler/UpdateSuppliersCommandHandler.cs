@@ -17,6 +17,7 @@ namespace Inventory_Management.Application.Features.Handlers.SuppliersHandler
         public async Task Handle(UpdateSuppliersCommand request, CancellationToken cancellationToken)
         {
             var val = await _context.Suppliers.FindAsync(request.Id);
+            val.CompanyId = request.CompanyId;
             val.SupplierName = request.SupplierName;
             val.ContactPerson = request.ContactPerson;
             val.Address = request.Address;

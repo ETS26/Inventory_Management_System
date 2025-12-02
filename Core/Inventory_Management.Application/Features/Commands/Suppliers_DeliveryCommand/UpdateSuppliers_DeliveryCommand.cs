@@ -6,6 +6,7 @@ namespace Inventory_Management.Application.Features.Commands.Suppliers_DeliveryC
     public class UpdateSuppliers_DeliveryCommand : IRequest
     {
         public Guid Id { get; set; }
+        public Guid CompanyId { get; set; }
         public Guid SupplierId { get; set; }
         public Guid RuleId { get; set; }
         public string Description { get; set; }

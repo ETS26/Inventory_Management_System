@@ -24,6 +24,7 @@ namespace Inventory_Management.Application.Features.Handlers.ProductsHandler
                 ProductName = val.ProductName,
                 Description = val.Description,
                 Barcode = val.Barcode,
+                ImageURL = val.ImageURL,
                 CategoryId = val.CategoryId,
                 UnitTypeId = val.UnitTypeId,
                 CreatedAt = val.CreatedAt,

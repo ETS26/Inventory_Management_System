@@ -6,6 +6,7 @@ namespace Inventory_Management.Application.Features.Commands.Stock_MovementsComm
     public class UpdateStock_MovementsCommand : IRequest
     {
         public Guid Id { get; set; }
+        public Guid CompanyId { get; set; }
         public Guid InventoryId { get; set; }
         public Guid MoveTypeId { get; set; }
         public Guid SupplierId { get; set; }

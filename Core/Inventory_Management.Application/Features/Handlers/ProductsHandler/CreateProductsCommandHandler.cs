@@ -21,8 +21,10 @@ namespace Inventory_Management.Application.Features.Handlers.ProductsHandler
         {
             await _context.Products.AddAsync(new Products
             {
+                CompanyId= request.CompanyId,
                 ProductName = request.ProductName,
                 Description = request.Description,
+                ImageURL = request.ImageURL,
                 Barcode = request.Barcode,
                 CategoryId = request.CategoryId,
                 UnitTypeId = request.UnitTypeId

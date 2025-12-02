@@ -22,7 +22,8 @@ namespace Inventory_Management.Application.Features.Handlers.CategoriesHandler
         {
             await _context.Categories.AddAsync(new Categories
             {
-                CategoryName= request.CategoryName,
+                CompanyId= request.CompanyId,
+                CategoryName = request.CategoryName,
                 Description= request.Description
             });
             await _context.SaveChangesAsync();

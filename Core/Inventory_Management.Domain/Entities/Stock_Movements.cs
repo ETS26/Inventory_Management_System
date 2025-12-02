@@ -1,3 +1,4 @@
+using Inventory_Management.Domain;
 using System.Text.Json.Serialization;
 
 namespace Inventory_Management.Domain.Entities

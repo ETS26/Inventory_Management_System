@@ -1,3 +1,4 @@
+﻿
 using Inventory_Management.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;

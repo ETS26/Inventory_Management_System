@@ -21,6 +21,7 @@ namespace Inventory_Management.Application.Features.Handlers.Suppliers_DeliveryH
         {
             await _context.Suppliers_Deliveries.AddAsync(new Suppliers_Delivery
             {
+                CompanyId= request.CompanyId,
                 SupplierId = request.SupplierId,
                 RuleId = request.RuleId,
                 Description = request.Description

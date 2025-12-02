@@ -25,6 +25,7 @@ namespace Inventory_Management.Application.Features.Handlers.ProductsHandler
                 ProductName = x.ProductName,
                 Description = x.Description,
                 Barcode = x.Barcode,
+                ImageURL = x.ImageURL,
                 CategoryId = x.CategoryId,
                 UnitTypeId = x.UnitTypeId,
                 CreatedAt = x.CreatedAt,

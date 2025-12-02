@@ -11,6 +11,8 @@ namespace Inventory_Management.Application.Features.Results.Stock_MovementsResul
         public string MoveTypeName { get; set; }     // Giriþ mi Çýkýþ mý?
         public string UserName { get; set; }         // Kim yaptý?
         public string SupplierName { get; set; }     // Hangi Tedarikçi? (Varsa)
+        public string? BatchNumber { get; set; }       // Parti Numarasý
+        public DateTime ExpirationDate { get; set; }  // Son Kullanma Tarihi
 
         // --- Sayýsal Veriler ---
         public int Quantity { get; set; }            // Adet

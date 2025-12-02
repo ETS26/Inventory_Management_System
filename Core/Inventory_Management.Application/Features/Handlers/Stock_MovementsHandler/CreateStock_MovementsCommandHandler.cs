@@ -12,66 +12,131 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
     public class CreateStock_MovementsCommandHandler : IRequestHandler<CreateStock_MovementsCommand>
     {
         private readonly Inventory_Management_Context _context;
+
         public CreateStock_MovementsCommandHandler(Inventory_Management_Context context)
         {
             _context = context;
         }
+
         public async Task Handle(CreateStock_MovementsCommand request, CancellationToken cancellationToken)
         {
-            // 1. Ýlgili Envanter Kaydýný Bul
-            var inventory = await _context.Inventories
-                .FirstOrDefaultAsync(x => x.Id == request.InventoryId, cancellationToken);
+            Inventories targetInventory = null;
 
-            if (inventory == null)
-                throw new Exception("Hata: Ýlgili envanter kaydý bulunamadý!");
+            // 0. KULLANICIYI VE ÞÝRKETÝNÝ BUL
+            // Envanter ve Hareket kayýtlarý kullanýcýnýn þirketine ait olmalýdýr.
+            var user = await _context.Users.FindAsync(new object[] { request.UserId }, cancellationToken);
+            if (user == null) throw new Exception("Ýþlemi yapan kullanýcý sistemde bulunamadý.");
 
-            // 2. Hareket Tipini Bul (Giriþ mi, Çýkýþ mý?)
+            // ---------------------------------------------------------
+            // 1. ENVANTER BELÝRLEME (YENÝ MÝ / MEVCUT MU?)
+            // ---------------------------------------------------------
+
+            if (request.IsNewInventory)
+            {
+                // --- SENARYO A: YENÝ KART AÇMA ---
+                if (request.ProductId == null || request.ProductId == Guid.Empty)
+                    throw new Exception("Yeni kart açmak için bir Ürün seçmelisiniz.");
+
+                // Yeni Envanter Nesnesi (Henüz veritabanýnda yok)
+                targetInventory = new Inventories
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = request.ProductId.Value,
+                    CompanyId = user.CompanyId, // Kullanýcýnýn þirketine kaydet
+                    Quantity = 0, // Miktarý aþaðýda hareket ile güncelleyeceðiz
+
+                    // Command'den gelen verileri ata
+                    PurchasePrice = request.PurchasePrice,
+                    SalePrice = request.SalePrice,
+                    CriticalStockQuantity = request.CriticalStockQuantity,
+                    BatchNumber = !string.IsNullOrEmpty(request.BatchNumber) ? request.BatchNumber : "AUTO-" + DateTime.Now.ToString("yyMMdd"),
+                    ExpirationDate = request.ExpirationDate,
+
+                    Description = "Stok Hareketi ile oluþturuldu.",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                // Context'e ekle (Transaction sonunda kaydedilecek)
+                await _context.Inventories.AddAsync(targetInventory, cancellationToken);
+            }
+            else
+            {
+                // --- SENARYO B: MEVCUT ENVANTER ---
+                if (request.InventoryId == null || request.InventoryId == Guid.Empty)
+                    throw new Exception("Lütfen listeye eklemek için bir stok kartý seçiniz.");
+
+                targetInventory = await _context.Inventories
+                    .FirstOrDefaultAsync(x => x.Id == request.InventoryId, cancellationToken);
+
+                if (targetInventory == null)
+                    throw new Exception("Seçilen envanter kaydý bulunamadý.");
+            }
+
+            // ---------------------------------------------------------
+            // 2. HAREKET TÝPÝ VE STOK MÝKTARI GÜNCELLEME
+            // ---------------------------------------------------------
+
             var moveType = await _context.Move_Types
                 .FirstOrDefaultAsync(x => x.Id == request.MoveTypeId, cancellationToken);
 
             if (moveType == null)
-                throw new Exception("Hata: Geçersiz hareket tipi!");
+                throw new Exception("Geçersiz hareket tipi!");
 
-            // 3. Stok Miktarýný Güncelle (Mantýk Kýsmý)
-            // NOT: Veritabanýnýzda MoveType isimlerinin "Income" (Giriþ) ve "Outcome" (Çýkýþ) 
-            // veya "Stock In" / "Stock Out" olarak kayýtlý olduðunu varsayýyoruz.
-            // Bunu kendi veritabanýnýzdaki isimlere göre düzeltebilirsiniz.
-
-            bool isIncome = moveType.MoveType.ToLower().Contains("stock in") || moveType.MoveType.ToLower().Contains("giriþ") || moveType.MoveType.ToLower().Contains("in");
-            bool isOutcome = moveType.MoveType.ToLower().Contains("stock out") || moveType.MoveType.ToLower().Contains("çýkýþ") || moveType.MoveType.ToLower().Contains("out");
+            // Büyük/Küçük harf duyarsýz kontrol
+            string typeName = moveType.MoveType.ToLower();
+            bool isIncome = typeName.Contains("stock in") || typeName.Contains("giriþ") || typeName.Contains("in");
+            bool isOutcome = typeName.Contains("stock out") || typeName.Contains("çýkýþ") || typeName.Contains("out");
 
             if (isIncome)
             {
-                // Stok GÝRÝÞÝ: Miktarý artýr
-                inventory.Quantity += request.Quantity;
+                targetInventory.Quantity += request.Quantity;
             }
             else if (isOutcome)
             {
-                // Stok ÇIKIÞI: Miktarý azalt (Önce yeterli stok var mý kontrol et)
-                if (inventory.Quantity < request.Quantity)
+                // Yeni kart açýlýyorsa stok zaten 0'dýr, eksiye düþemez.
+                if (targetInventory.Quantity < request.Quantity)
                 {
-                    throw new Exception($"Yetersiz Stok! Mevcut: {inventory.Quantity}, Ýstenen Çýkýþ: {request.Quantity}");
+                    throw new Exception($"Yetersiz Stok! Mevcut: {targetInventory.Quantity}, Çýkýþ Ýstenen: {request.Quantity}");
                 }
-                inventory.Quantity -= request.Quantity;
+                targetInventory.Quantity -= request.Quantity;
             }
 
-            // 4. Stok Hareketini Kayýt Ýçin Hazýrla
+            // ---------------------------------------------------------
+            // 3. FÝYAT HESAPLAMA VE HAREKET KAYDI
+            // ---------------------------------------------------------
+
+            // O anki iþlem tutarýný hesapla (Alýþsa Alýþ Fiyatý, Satýþsa Satýþ Fiyatý)
+            float unitPrice = isIncome ? targetInventory.PurchasePrice : targetInventory.SalePrice;
+            float totalPayment = request.Quantity * unitPrice;
+
             var movement = new Stock_Movements
             {
-                InventoryId = request.InventoryId,
+                Id = Guid.NewGuid(),
+                InventoryId = targetInventory.Id, // Yeni ise yeni ID, eskiyse eski ID
                 MoveTypeId = request.MoveTypeId,
-                CompanyId = inventory.CompanyId, // Envanterin ait olduðu þirkete kaydet
-                UserId = request.UserId, // Login olan kullanýcýnýn ID'si (Frontend'den gelecek)
-                SupplierId = request.SupplierId, // Opsiyonel olabilir
+                UserId = request.UserId,
+                SupplierId = request.SupplierId, // Command'da zorunlu Guid, boþsa Guid.Empty gelir
                 Quantity = request.Quantity,
+                Payment = totalPayment,
                 Description = request.Description,
-               
+                CompanyId = targetInventory.CompanyId,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
 
-            // 5. Her Ýki Ýþlemi de Kaydet (Transaction)
             await _context.Stock_Movements.AddAsync(movement, cancellationToken);
-            _context.Inventories.Update(inventory); // Envanter güncellendi olarak iþaretle
 
+            // Mevcut envanter güncellendiyse EF Core'a bildir (Yeni ise zaten Added durumunda)
+            if (!request.IsNewInventory)
+            {
+                _context.Inventories.Update(targetInventory);
+            }
+
+            // ---------------------------------------------------------
+            // 4. KAYDET (TRANSACTION)
+            // ---------------------------------------------------------
+            // Tüm iþlemler (Yeni Envanter + Stok Güncelleme + Hareket Kaydý) tek seferde yapýlýr.
             await _context.SaveChangesAsync(cancellationToken);
         }
     }

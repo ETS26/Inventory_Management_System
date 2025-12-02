@@ -18,6 +18,7 @@ namespace Inventory_Management.Application.Features.Handlers.CategoriesHandler
         public async Task Handle(UpdateCategoriesCommand request, CancellationToken cancellationToken)
         {
             var val = await _context.Categories.FindAsync(request.Id);
+            val.CompanyId = request.CompanyId;
             val.CategoryName = request.CategoryName;
             val.Description = request.Description;
             val.IsActive = request.IsActive;

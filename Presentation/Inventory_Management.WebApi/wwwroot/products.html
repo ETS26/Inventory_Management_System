@@ -1,0 +1,186 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ürünler - InventoryPro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="d-flex" id="wrapper">
+        <div class="bg-white border-end d-flex flex-column" id="sidebar-wrapper">
+            <div class="sidebar-heading text-center py-4 primary-text fs-4 fw-bold text-uppercase border-bottom">
+                <i class="fas fa-shopping-cart me-2"></i>InventoryPro
+            </div>
+            <div class="list-group list-group-flush my-3 flex-grow-1">
+                <a href="dashboard.html" class="list-group-item list-group-item-action">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </a>
+                <a href="inventory.html" class="list-group-item list-group-item-action bg-transparent second-text fw-bold">
+                    <i class="fas fa-box me-2"></i>Inventory
+                </a>
+                <a href="stock-movements.html" class="list-group-item list-group-item-action bg-transparent second-text fw-bold">
+                    <i class="fas fa-exchange-alt me-2"></i>Stock Movements
+                </a>
+                <a href="products.html" class="list-group-item list-group-item-action active">
+                    <i class="fas fa-tags me-2"></i>Products
+                </a>
+
+                <a href="#" onclick="logout()" class="list-group-item list-group-item-action bg-transparent text-danger fw-bold mt-4 border-top">
+                    <i class="fas fa-power-off me-2"></i>Logout
+                </a>
+            </div>
+            <div class="sidebar-footer p-3 text-center bg-light border-top">
+                <small class="text-muted" style="font-size: 0.75rem;">Version 1.0.0 <br> &copy; 2025 Enterprise</small>
+            </div>
+        </div>
+
+        <div id="page-content-wrapper">
+            <nav class="navbar navbar-expand-lg navbar-light bg-white py-3 px-4 border-bottom shadow-sm">
+                <div class="d-flex align-items-center w-100 justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-align-left primary-text fs-4 me-3 cursor-pointer" id="menu-toggle"></i>
+                        <h2 class="fs-4 m-0 fw-bold text-dark">Ürün Kataloğu</h2>
+                    </div>
+
+                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link p-0" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="user-profile-section d-flex align-items-center bg-light px-3 py-1 rounded-pill border">
+                                    <div class="text-end me-3" style="line-height: 1.2;">
+                                        <span class="d-block fw-bold text-dark small" id="navFullName">Yükleniyor...</span>
+                                        <small class="d-block text-primary fw-bold" style="font-size: 0.65rem;" id="navCompany">...</small>
+                                    </div>
+                                    <div class="profile-circle bg-primary text-white rounded-circle d-flex justify-content-center align-items-center fw-bold" style="width: 35px; height: 35px;" id="navProfileCircle">
+                                        U
+                                    </div>
+                                    <i class="fas fa-chevron-down ms-2 text-muted small"></i>
+                                </div>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg mt-2 rounded-3">
+                                <li><a class="dropdown-item py-2 small" href="#"><i class="fas fa-user me-2 text-primary"></i>Profilim</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item py-2 text-danger small fw-bold" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Çıkış Yap</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <div class="container-fluid px-4 py-4">
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-primary">
+                            <div>
+                                <p class="text-muted mb-1 fw-bold small text-uppercase">TOPLAM ÜRÜN</p>
+                                <h3 class="fs-3 fw-bold text-dark mb-0" id="totalProductsCount">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-success">
+                            <div>
+                                <p class="text-success mb-1 fw-bold small text-uppercase">AKTİF ÜRÜNLER</p>
+                                <h3 class="fs-3 fw-bold text-dark mb-0" id="activeProductsCount">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-warning">
+                            <div>
+                                <p class="text-warning mb-1 fw-bold small text-uppercase">KATEGORİ SAYISI</p>
+                                <h3 class="fs-3 fw-bold text-dark mb-0" id="totalCategoriesCount">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white p-1">
+                            <span class="input-group-text bg-white border-0 ps-3"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" id="searchInput" class="form-control border-0" placeholder="Ürün adı, barkod veya kategori ara..." onkeyup="filterProducts()">
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <button class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                            <i class="fas fa-plus me-2"></i> Yeni Ürün Ekle
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row g-3" id="productsContainer">
+                    <div class="col-12 text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="text-muted mt-2">Ürünler Yükleniyor...</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addProductModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark ps-2 pt-2">Yeni Ürün Tanımla</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 pt-3">
+                    <form id="productForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-secondary">ÜRÜN ADI</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0"><i class="fas fa-tag"></i></span>
+                                <input type="text" class="form-control form-control-lg bg-light border-0" id="productNameInput" required placeholder="Örn: Kablosuz Mouse">
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-secondary">BARKOD</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-0"><i class="fas fa-barcode"></i></span>
+                                    <input type="text" class="form-control bg-light border-0" id="barcodeInput" required placeholder="869...">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-secondary">KATEGORİ</label>
+                                <select class="form-select bg-light border-0" id="categorySelect" required></select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-secondary">BİRİM</label>
+                                <select class="form-select bg-light border-0" id="unitTypeSelect" required></select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 mt-3">
+                            <label class="form-label fw-bold small text-secondary">AÇIKLAMA</label>
+                            <textarea class="form-control bg-light border-0" id="descriptionInput" rows="3" placeholder="Ürün hakkında kısa bilgi..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-0 pt-0 pe-4 pb-4">
+                    <button type="button" class="btn btn-light text-muted rounded-pill px-4" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm ps-4 pe-4" onclick="saveProduct()">
+                        <i class="fas fa-save me-2"></i>Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/products.js"></script>
+</body>
+</html>

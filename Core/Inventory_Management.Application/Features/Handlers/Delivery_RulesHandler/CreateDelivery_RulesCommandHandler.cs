@@ -22,7 +22,16 @@ namespace Inventory_Management.Application.Features.Handlers.Delivery_RulesHandl
             await _context.Delivery_Rules.AddAsync(new Delivery_Rules
             {
                 RuleName = request.RuleName,
-                RuleDescription = request.RuleDescription
+                RuleDescription = request.RuleDescription, 
+                LeadTimeDays = request.LeadTimeDays,
+                CalendarColor = request.CalendarColor,
+                IsMonday = request.IsMonday,
+                IsTuesday = request.IsTuesday,
+                IsWednesday = request.IsWednesday,
+                IsThursday = request.IsThursday,
+                IsFriday = request.IsFriday,
+                IsSaturday = request.IsSaturday,
+                IsSunday = request.IsSunday
             });
             await _context.SaveChangesAsync();
             

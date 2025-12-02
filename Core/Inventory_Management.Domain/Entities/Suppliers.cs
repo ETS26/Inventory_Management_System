@@ -1,7 +1,11 @@
+using Inventory_Management.Domain;
+
 namespace Inventory_Management.Domain.Entities
 {
     public class Suppliers : BaseEntity
     {
+        public Guid CompanyId { get; set; }
+        public virtual Companies Company { get; set; }
         public string SupplierName { get; set; }
         public string ContactPerson { get; set; }
         public string Email { get; set; }

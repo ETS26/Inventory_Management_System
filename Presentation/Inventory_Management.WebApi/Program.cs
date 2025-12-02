@@ -33,6 +33,7 @@ try
         options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
     });
 
+
     // --- MediatR ---
     builder.Services.AddMediatR(cfg =>
         cfg.RegisterServicesFromAssemblies(typeof(GetCategoriesQueryHandler).Assembly));
@@ -71,6 +72,8 @@ try
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"]))
         };
     });
+
+    
 
     builder.Services.AddAuthorization();
 

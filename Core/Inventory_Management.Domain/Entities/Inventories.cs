@@ -1,3 +1,5 @@
+using Inventory_Management.Domain;
+
 namespace Inventory_Management.Domain.Entities
 {
     public class Inventories : BaseEntity
@@ -12,6 +14,6 @@ namespace Inventory_Management.Domain.Entities
         public float PurchasePrice { get; set; }
         public float SalePrice { get; set; }
         public DateTime ExpirationDate { get; set; }
-        public string Description { get; set; }
+        public string? Description { get; set; }
     }
 }

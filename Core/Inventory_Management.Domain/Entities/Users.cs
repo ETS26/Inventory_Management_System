@@ -1,3 +1,5 @@
+using Inventory_Management.Domain;
+
 namespace Inventory_Management.Domain.Entities
 {
     public class Users : BaseEntity

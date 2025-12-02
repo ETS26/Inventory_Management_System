@@ -64,7 +64,8 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
                     MoveTypeName = item.MoveType?.MoveType ?? "-",
                     UserName = item.User != null ? $"{item.User.FirstName} {item.User.LastName}" : "Bilinmiyor",
                     SupplierName = item.Supplier?.SupplierName ?? "-",
-
+                    BatchNumber = item.Inventory?.BatchNumber,
+                    ExpirationDate = item.Inventory.ExpirationDate,
                     Quantity = item.Quantity,
                     Description = item.Description ?? "",
                     Payment = item.Quantity * unitPrice

@@ -1,50 +1,37 @@
 ﻿(function () {
     'use strict';
 
-    // Token kontrolü
     const token = localStorage.getItem('jwtToken');
-    if (!token) {
-        window.location.href = 'login.html';
-        return;
-    }
 
-    // Menü Toggle
-    const initMenuToggle = () => {
+    // Dropdown verilerini hafızada tutmak için
+    let allInventories = [];
+    let allProducts = [];
+
+    // 1. AUTH GUARD & BAŞLATMA
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!token) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Menü Toggle (Eğer script.js yüklenmediyse yedek olarak)
         const toggleButton = document.getElementById("menu-toggle");
-        const wrapper = document.getElementById("wrapper");
-
-        if (toggleButton && wrapper) {
+        if (toggleButton) {
             toggleButton.addEventListener('click', () => {
-                wrapper.classList.toggle("toggled");
+                document.getElementById("wrapper").classList.toggle("toggled");
             });
         }
-    };
 
-    // Logout Fonksiyonu
-    window.logout = () => {
-        localStorage.clear();
-        window.location.href = 'login.html';
-    };
-
-    // DOM Hazır Olduğunda
-    document.addEventListener('DOMContentLoaded', async () => {
-        console.log("🚀 Stok Hareketleri Sayfası Yükleniyor...");
-
-        initMenuToggle();
-
-        // Sayfa elementlerinin varlığını kontrol et
-        const movementsContainer = document.getElementById('movementsContainer');
-
-        if (movementsContainer) {
-            await loadStockMovements();
-            await loadStockDropdowns();
-        } else {
-            console.warn("⚠️ Stok hareketleri container'ı bulunamadı!");
+        // Sadece bu sayfada çalışacak fonksiyonları başlat
+        if (document.getElementById('movementsContainer')) {
+            console.log("🚀 Stok Hareketleri Sayfası Başlatılıyor...");
+            loadStockMovements();
+            loadStockDropdowns();
         }
     });
 
     // ==========================================
-    // 1. STOK HAREKETLERİNİ YÜKLE
+    // 2. STOK HAREKETLERİNİ YÜKLE (YENİ YAPINIZ)
     // ==========================================
     async function loadStockMovements() {
         const container = document.getElementById('movementsContainer');
@@ -86,7 +73,7 @@
                     <div class="col-12 text-center py-5">
                         <i class="fas fa-box-open fs-1 text-muted mb-3 d-block"></i>
                         <h5 class="text-muted">Henüz Stok Hareketi Yok</h5>
-                        <p class="text-muted small">İlk kaydınızı eklemek için "Yeni Hareket Ekle" butonuna tıklayın.</p>
+                        <p class="text-muted small">İlk kaydınızı eklemek için "Hareket Ekle" butonuna tıklayın.</p>
                     </div>
                 `;
                 return;
@@ -117,163 +104,147 @@
     }
 
     // ==========================================
-    // 2. HAREKET KARTINI OLUŞTUR
+    // 3. HAREKET KARTINI OLUŞTUR (TUTAR EKLENDİ)
     // ==========================================
-    function createMovementCard(movement) {
-        // Null güvenli veri çekme
-        const productName = movement.productName || 'Silinmiş Ürün';
-        const moveTypeName = movement.moveTypeName || 'Bilinmeyen';
-        const quantity = movement.quantity || 0;
-        const userName = movement.userName || 'Sistem';
-        const description = movement.description || '';
+    function createMovementCard(m) {
+        // --- Tarih Formatı ---
+        const dateObj = new Date(m.createdAt);
+        const date = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+        const time = dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-        // Tarih formatı
-        const dateObj = new Date(movement.createdAt);
-        const date = dateObj.toLocaleDateString('tr-TR', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
-        const time = dateObj.toLocaleTimeString('tr-TR', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        // --- Tutar (Payment) Formatlama (YENİ) ---
+        // Backend'den gelen m.payment değerini para birimine çeviriyoruz
+        const payment = m.payment || 0;
+        const formattedPayment = payment.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-        // Hareket tipi kontrolü (giriş mi çıkış mı?)
-        const moveName = moveTypeName.toLowerCase();
-        const isIncome = moveName.includes('stock in') ||
-            moveName.includes('giriş') ||
-            moveName.includes('in') ||
-            moveName.includes('income');
+        // --- SKT ve Seri No İşlemleri ---
+        let expInfo = `<span class="text-muted small">-</span>`;
+        if (m.expirationDate) {
+            const expDate = new Date(m.expirationDate);
+            const isExpired = expDate < new Date();
+            const expColor = isExpired ? "text-danger fw-bold" : "text-dark";
+            const expIcon = isExpired ? "fa-exclamation-circle" : "fa-calendar-alt";
+            expInfo = `<span class="${expColor} small"><i class="far ${expIcon} me-1"></i>${expDate.toLocaleDateString('tr-TR')}</span>`;
+        }
 
-        // Stil değişkenleri
-        const borderClass = isIncome ? 'border-start border-success border-3' : 'border-start border-danger border-3';
+        const batchNo = m.batchNumber ? `<span class="font-monospace fw-bold text-dark small">${m.batchNumber}</span>` : `<span class="text-muted small">Yok</span>`;
+
+        // --- Renk ve İkon Mantığı ---
+        const moveName = (m.moveTypeName || "").toLowerCase();
+        const isIncome = moveName.includes('income') || moveName.includes('giriş') || moveName.includes('in') || moveName.includes('stock in');
+
+        const borderClass = isIncome ? 'border-left-success' : 'border-left-danger';
         const iconBg = isIncome ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger';
         const icon = isIncome ? 'fa-arrow-down' : 'fa-arrow-up';
         const amountColor = isIncome ? 'text-success' : 'text-danger';
         const amountPrefix = isIncome ? '+' : '-';
-        const badgeClass = isIncome ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger';
 
-        // Kullanıcı baş harfi
+        // Veri Kontrolleri
+        const productName = m.productName || 'Bilinmeyen Ürün';
+        const userName = m.userName || 'Sistem';
         const userInitial = userName.charAt(0).toUpperCase();
 
         return `
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card shadow-sm h-100 ${borderClass} hover-shadow transition">
-                    <div class="card-body">
-                        <!-- Üst Kısım: Ürün ve Miktar -->
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div class="d-flex align-items-center flex-grow-1">
-                                <div class="rounded-circle ${iconBg} d-flex align-items-center justify-content-center me-3" 
-                                     style="width: 40px; height: 40px;">
-                                    <i class="fas ${icon}"></i>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="fw-bold mb-1 text-dark text-truncate">${productName}</h6>
-                                    <span class="badge ${badgeClass} border px-2 py-1">
-                                        ${moveTypeName}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="text-end ms-2">
-                                <h4 class="fw-bold mb-0 ${amountColor}">${amountPrefix}${quantity}</h4>
-                                <small class="text-muted">Adet</small>
-                            </div>
+        <div class="col-md-6 col-lg-4">
+            <div class="card movement-card shadow-sm h-100 ${borderClass} p-3">
+                
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="d-flex align-items-center overflow-hidden">
+                        <div class="icon-box-sm ${iconBg} me-3 flex-shrink-0">
+                            <i class="fas ${icon}"></i>
                         </div>
-
-                        ${description ? `
-                        <!-- Açıklama -->
-                        <div class="alert alert-light border-0 py-2 px-3 mb-3 small">
-                            <i class="fas fa-info-circle me-1 text-muted"></i>
-                            <span class="text-muted fst-italic">${description}</span>
+                        <div class="text-truncate">
+                            <h6 class="fw-bold mb-0 text-dark text-truncate" title="${productName}">${productName}</h6>
+                            <span class="badge bg-light text-secondary border mt-1 custom-badge">
+                                ${m.moveTypeName || '-'}
+                            </span>
                         </div>
-                        ` : ''}
-
-                        <!-- Alt Kısım: Kullanıcı ve Tarih -->
-                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
-                                     style="width: 28px; height: 28px; font-size: 0.75rem; font-weight: 600;">
-                                    ${userInitial}
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block" style="font-size: 0.7rem;">İşlem Yapan</small>
-                                    <span class="fw-bold small text-dark">${userName}</span>
-                                </div>
-                            </div>
-                            <div class="text-end">
-                                <small class="text-muted d-block" style="font-size: 0.7rem;">${date}</small>
-                                <span class="fw-bold text-secondary small">${time}</span>
-                            </div>
+                    </div>
+                    <div class="text-end ms-2 flex-shrink-0">
+                        <h4 class="fw-bold mb-0 ${amountColor}">${amountPrefix}${m.quantity}</h4>
+                        <small class="text-muted d-block" style="font-size: 0.7rem;">Adet</small>
+                        
+                        <div class="mt-1 px-2 py-1 bg-light rounded border border-light-subtle">
+                            <span class="fw-bold text-dark small">₺${formattedPayment}</span>
                         </div>
                     </div>
                 </div>
+
+                <div class="bg-light rounded p-2 mb-3 mt-2 border border-1">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">Seri No:</small>
+                        ${batchNo}
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">SKT:</small>
+                        ${expInfo}
+                    </div>
+                    ${m.description ? `<div class="mt-2 border-top pt-1 small text-muted fst-italic"><i class="fas fa-info-circle me-1"></i>${m.description}</div>` : ''}
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-end mt-auto pt-2 border-top">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px; font-size: 0.7rem;">
+                            ${userInitial}
+                        </div>
+                        <span class="fw-bold small text-dark">${userName}</span>
+                    </div>
+                    <div class="text-end" style="line-height: 1.1;">
+                        <small class="text-muted d-block" style="font-size: 0.7rem;">${date}</small>
+                        <small class="fw-bold text-secondary small">${time}</small>
+                    </div>
+                </div>
             </div>
-        `;
+        </div>`;
     }
 
     // ==========================================
-    // 3. DROPDOWN'LARI DOLDUR
+    // 4. DROPDOWNLARI GÜVENLİ YÜKLE
     // ==========================================
     async function loadStockDropdowns() {
         const inventorySelect = document.getElementById('inventorySelect');
         const moveTypeSelect = document.getElementById('moveTypeSelect');
         const supplierSelect = document.getElementById('supplierSelect');
 
-        if (!inventorySelect || !moveTypeSelect || !supplierSelect) {
-            console.warn("⚠️ Dropdown elementleri bulunamadı!");
-            return;
-        }
+        if (!inventorySelect || !moveTypeSelect) return;
 
         try {
             // Paralel istekler
-            const [invResponse, typeResponse, supplierResponse] = await Promise.all([
+            const [invRes, prodRes, typeRes, supRes] = await Promise.all([
                 fetch('/api/Inventories', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch('/api/Products', { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch('/api/MoveTypes', { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch('/api/Suppliers', { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
-            // Inventories
-            if (invResponse.ok) {
-                const inventories = await invResponse.json();
-                inventorySelect.innerHTML = '<option value="" selected disabled>Ürün seçiniz...</option>';
+            // Envanter ve Ürünler (Hafızaya al)
+            if (invRes.ok) allInventories = await invRes.json();
+            if (prodRes.ok) allProducts = await prodRes.json();
 
-                inventories.forEach(item => {
-                    const productName = item.productName || item.product?.productName || 'Bilinmeyen';
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.textContent = `${productName} (Stok: ${item.quantity})`;
-                    if (item.quantity === 0) {
-                        option.disabled = true;
-                        option.textContent += ' - Tükendi';
-                    }
-                    inventorySelect.appendChild(option);
+            // Başlangıçta Envanter listesini doldur
+            fillDropdown(allInventories, 'inventory');
+
+            // Hareket Tipleri
+            if (typeRes.ok) {
+                const types = await typeRes.json();
+                moveTypeSelect.innerHTML = '<option value="" selected disabled>Seçiniz...</option>';
+                types.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.text = t.moveType;
+                    moveTypeSelect.appendChild(opt);
                 });
             }
 
-            // Move Types
-            if (typeResponse.ok) {
-                const moveTypes = await typeResponse.json();
-                moveTypeSelect.innerHTML = '<option value="" selected disabled>İşlem tipi seçiniz...</option>';
-
-                moveTypes.forEach(type => {
-                    const option = document.createElement('option');
-                    option.value = type.id;
-                    option.textContent = type.moveType || 'Tanımsız';
-                    moveTypeSelect.appendChild(option);
-                });
-            }
-
-            // Suppliers (opsiyonel)
-            if (supplierResponse.ok && supplierSelect) {
-                const suppliers = await supplierResponse.json();
-                supplierSelect.innerHTML = '<option value="">Tedarikçi yok</option>';
-
-                suppliers.forEach(supplier => {
-                    const option = document.createElement('option');
-                    option.value = supplier.id;
-                    option.textContent = supplier.supplierName || 'İsimsiz Tedarikçi';
-                    supplierSelect.appendChild(option);
+            // Tedarikçiler
+            if (supRes.ok && supplierSelect) {
+                const suppliers = await supRes.json();
+                supplierSelect.innerHTML = '<option value="">Tedarikçi Seçiniz</option>';
+                suppliers.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.text = s.supplierName;
+                    supplierSelect.appendChild(opt);
                 });
             }
 
@@ -282,49 +253,131 @@
         }
     }
 
+    // Helper: Dropdown Doldur
+    function fillDropdown(data, mode) {
+        const select = document.getElementById('inventorySelect');
+        if (!select) return;
+        select.innerHTML = '<option value="" selected disabled>Seçiniz...</option>';
+
+        if (!data || data.length === 0) {
+            const opt = document.createElement('option');
+            opt.text = "Veri bulunamadı";
+            opt.disabled = true;
+            select.appendChild(opt);
+            return;
+        }
+
+        data.forEach(item => {
+            const opt = document.createElement('option');
+            if (mode === 'inventory') {
+                const pName = item.productName || (item.product ? item.product.productName : "Bilinmeyen Ürün");
+                opt.value = item.id;
+                opt.text = `${pName} (Mevcut: ${item.quantity})`;
+            } else {
+                const pName = item.productName;
+                opt.value = item.id;
+                opt.text = `${pName} ${item.barcode ? ' - ' + item.barcode : ''}`;
+            }
+            select.appendChild(opt);
+        });
+    }
+
     // ==========================================
-    // 4. YENİ HAREKET KAYDETME
+    // 5. GLOBAL FONKSİYONLAR (HTML'den erişim için)
     // ==========================================
+
+    // Mod Değiştirme (Yeni Kart / Mevcut Stok)
+    window.selectMode = function (mode) {
+        const cardExisting = document.getElementById('cardExisting');
+        const cardNew = document.getElementById('cardNew');
+        const checkBox = document.getElementById('newInventoryCheck');
+        const detailsDiv = document.getElementById('newInventoryDetails');
+        const label = document.getElementById('productLabel');
+
+        if (!cardExisting || !cardNew) return;
+
+        if (mode === 'existing') {
+            cardExisting.classList.add('active');
+            cardNew.classList.remove('active');
+            if (checkBox) checkBox.checked = false;
+            if (detailsDiv) detailsDiv.classList.add('d-none');
+            if (label) label.innerText = "ÜRÜN (MEVCUT ENVANTER)";
+            fillDropdown(allInventories, 'inventory');
+        } else {
+            cardNew.classList.add('active');
+            cardExisting.classList.remove('active');
+            if (checkBox) checkBox.checked = true;
+            if (detailsDiv) detailsDiv.classList.remove('d-none');
+            if (label) label.innerText = "ÜRÜN KATALOĞUNDAN SEÇİN";
+            fillDropdown(allProducts, 'product');
+        }
+    };
+
+    // Renk Güncelleme
+    window.updateColor = function () {
+        const select = document.getElementById('moveTypeSelect');
+        const input = document.getElementById('quantityInput');
+        if (!select || !input) return;
+        const text = select.options[select.selectedIndex].text.toLowerCase();
+        if (text.includes('giriş') || text.includes('in')) {
+            input.style.borderColor = '#198754'; input.style.color = '#198754';
+        } else if (text.includes('çıkış') || text.includes('out')) {
+            input.style.borderColor = '#dc3545'; input.style.color = '#dc3545';
+        } else {
+            input.style.borderColor = '#e0e0e0'; input.style.color = '#333';
+        }
+    };
+
+    // Kaydetme Fonksiyonu
     window.saveStockMovement = async function () {
-        // Form elemanlarını al
         const inventorySelect = document.getElementById('inventorySelect');
         const moveTypeSelect = document.getElementById('moveTypeSelect');
         const supplierSelect = document.getElementById('supplierSelect');
         const quantityInput = document.getElementById('quantityInput');
         const descriptionInput = document.getElementById('descriptionInput');
         const saveButton = document.querySelector('.modal-footer .btn-primary');
+        const isNewInventory = document.getElementById('newInventoryCheck')?.checked || false;
 
-        // Validasyon
-        const inventoryId = inventorySelect.value;
+        const selectedId = inventorySelect.value;
         const moveTypeId = moveTypeSelect.value;
         const supplierId = supplierSelect.value;
         const quantity = parseInt(quantityInput.value);
         const description = descriptionInput?.value || '';
         const userId = localStorage.getItem('userId');
 
-        if (!inventoryId || !moveTypeId || !quantity || !supplierId || quantity <= 0) {
-            alert("⚠️ Lütfen tüm zorunlu alanları doldurun ve geçerli bir miktar girin.");
+        if (!selectedId || !moveTypeId || !quantity || !supplierId || quantity <= 0) {
+            alert("⚠️ Lütfen zorunlu alanları doldurun ve geçerli bir miktar girin.");
             return;
         }
 
         if (!userId) {
-            alert("❌ Kullanıcı ID bulunamadı. Lütfen çıkış yapıp tekrar giriş yapın.");
+            alert("❌ Kullanıcı oturumu bulunamadı. Lütfen tekrar giriş yapın.");
             return;
         }
 
-        // Payload hazırla
-        const payload = {
-            inventoryId: inventoryId,
+        let payload = {
             moveTypeId: moveTypeId,
-            supplierId: supplierId,
-            userId: userId,
             quantity: quantity,
-            description: description    
+            description: description,
+            userId: userId,
+            supplierId: supplierId,
+            isNewInventory: isNewInventory,
         };
 
-        console.log("📤 Gönderilen Veri:", payload);
+        if (isNewInventory) {
+            payload.productId = selectedId;
+            payload.inventoryId = null;
+            payload.purchasePrice = parseFloat(document.getElementById('purchasePrice')?.value) || 0;
+            payload.salePrice = parseFloat(document.getElementById('salePrice')?.value) || 0;
+            payload.criticalStockQuantity = parseInt(document.getElementById('criticalStock')?.value) || 10;
+            payload.batchNumber = document.getElementById('batchNumber')?.value || "";
+            const expDate = document.getElementById('expirationDate')?.value;
+            if (expDate) payload.expirationDate = expDate;
+        } else {
+            payload.inventoryId = selectedId;
+            payload.productId = null;
+        }
 
-        // Button durumunu güncelle
         const originalButtonText = saveButton.innerHTML;
         saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Kaydediliyor...';
         saveButton.disabled = true;
@@ -343,17 +396,13 @@
 
             if (response.ok) {
                 alert("✅ Stok hareketi başarıyla kaydedildi!");
-
-                // Modal'ı kapat
-                const modal = bootstrap.Modal.getInstance(document.getElementById('addMovementModal'));
+                const modalEl = document.getElementById('addMovementModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
                 if (modal) modal.hide();
+                document.getElementById('movementForm').reset();
 
-                // Formu temizle
-                document.getElementById('movementForm')?.reset();
-
-                // Sayfayı yenile
+                // Listeyi yenile
                 await loadStockMovements();
-
             } else {
                 throw new Error(result.errorMessage || result.title || 'İşlem başarısız');
             }
@@ -362,7 +411,6 @@
             console.error("❌ Kaydetme Hatası:", error);
             alert(`❌ Hata: ${error.message}`);
         } finally {
-            // Button'u eski haline getir
             saveButton.innerHTML = originalButtonText;
             saveButton.disabled = false;
         }

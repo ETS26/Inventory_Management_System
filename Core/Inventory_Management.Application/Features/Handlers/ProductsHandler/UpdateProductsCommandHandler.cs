@@ -17,9 +17,11 @@ namespace Inventory_Management.Application.Features.Handlers.ProductsHandler
         public async Task Handle(UpdateProductsCommand request, CancellationToken cancellationToken)
         {
             var val = await _context.Products.FindAsync(request.Id);
+            val.CompanyId = request.CompanyId;
             val.ProductName = request.ProductName;
             val.Description = request.Description;
             val.Barcode = request.Barcode;
+            val.ImageURL = request.ImageURL;
             val.CategoryId = request.CategoryId;
             val.UnitTypeId = request.UnitTypeId;
             val.IsActive = request.IsActive;

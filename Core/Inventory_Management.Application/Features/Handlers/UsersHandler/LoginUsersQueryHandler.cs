@@ -60,6 +60,7 @@ namespace Inventory_Management.Application.Features.Handlers.UsersHandler
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim("firstName", user.FirstName),
+                new Claim("companyId", user.CompanyId.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
