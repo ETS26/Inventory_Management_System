@@ -12,6 +12,7 @@ namespace Inventory_Management.Domain.Entities
         public virtual ICollection<Stock_Movements> Stock_Movements { get; set; }
         public virtual ICollection<Suppliers> Suppliers { get; set; }
         public virtual ICollection<Products> Products { get; set; }
+        public virtual ICollection<UsersRoles> UsersRoles { get; set; } 
         public virtual ICollection<Suppliers_Delivery> Suppliers_Deliveries { get; set; }
         public virtual ICollection<Categories> Categories { get; set; }
 

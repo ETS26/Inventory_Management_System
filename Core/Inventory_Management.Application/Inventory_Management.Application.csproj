@@ -27,8 +27,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Infrastructure\Inventory_Management.Persistance\Inventory_Management.Persistance.csproj" />
     <ProjectReference Include="..\Inventory_Management.Domain\Inventory_Management.Domain.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\Inventory_Management.Persistance\Inventory_Management.Persistance.csproj" />
   </ItemGroup>
 
 </Project>

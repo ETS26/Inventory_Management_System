@@ -33,6 +33,8 @@ try
         options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
     });
 
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<Inventory_Management.Domain.Common.ICurrentUserService, Inventory_Management.WebApi.Services.CurrentUserService>();
 
     // --- MediatR ---
     builder.Services.AddMediatR(cfg =>

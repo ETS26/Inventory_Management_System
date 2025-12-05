@@ -1,6 +1,6 @@
 ﻿(function () {
     const token = localStorage.getItem('jwtToken');
-    let allProducts = []; // Arama için veriyi sakla
+    let allProducts = [];
 
     document.addEventListener('DOMContentLoaded', function () {
         if (!token) {
@@ -10,12 +10,10 @@
 
         console.log("🚀 Ürünler Sayfası Yüklendi.");
         loadProducts();
-        loadProductDropdowns(); // Kategorileri ve Birimleri çeker
+        loadProductDropdowns();
     });
 
-    // ==========================================
-    // 1. ÜRÜNLERİ LİSTELE
-    // ==========================================
+    // 1. Ürünleri Listele
     async function loadProducts() {
         const container = document.getElementById('productsContainer');
         if (!container) return;
@@ -28,11 +26,9 @@
             if (!response.ok) throw new Error(`Hata: ${response.status}`);
 
             const data = await response.json();
-            allProducts = data; // Hafızaya al
+            allProducts = data;
 
-            // İstatistikleri Güncelle (Toplam ve Aktif Ürün)
             updateProductStats(data);
-
             renderProducts(data);
 
         } catch (error) {
@@ -41,9 +37,7 @@
         }
     }
 
-    // ==========================================
-    // 2. KARTLARI OLUŞTUR (RENDER)
-    // ==========================================
+    // 2. Ürün Kartlarını Oluştur (GÜNCELLENEN KISIM)
     function renderProducts(data) {
         const container = document.getElementById('productsContainer');
         container.innerHTML = '';
@@ -64,18 +58,34 @@
             const unit = p.unitTypeName || "Adet";
             const barcode = p.barcode || "-";
 
+            // --- RESİM MANTIĞI ---
+            let imageHtml = '';
+
+            if (p.imageUrl && p.imageUrl.trim() !== "") {
+                // Resim Varsa: Şık bir kare kutu içinde göster
+                imageHtml = `
+                <div class="rounded-3 me-3 overflow-hidden shadow-sm border" style="width: 60px; height: 60px; flex-shrink: 0;">
+                    <img src="${p.imageUrl}" alt="${pName}" style="width: 100%; height: 100%; object-fit: cover;" 
+                         onerror="this.onerror=null; this.src='https://placehold.co/60x60?text=IMG';"> 
+                </div>`;
+            } else {
+                // Resim Yoksa: Baş Harf (Eski Yöntem)
+                imageHtml = `
+                <div class="rounded-3 bg-primary-light text-primary d-flex align-items-center justify-content-center me-3 shadow-sm" 
+                     style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold; flex-shrink: 0;">
+                    ${initial}
+                </div>`;
+            }
+
             // Kart Tasarımı
             const card = `
             <div class="col-md-6 col-lg-4">
                 <div class="card border-0 shadow-sm h-100 p-3 card-hover transition">
                     <div class="d-flex align-items-center mb-3">
-                        <div class="rounded-circle bg-primary-light text-primary d-flex align-items-center justify-content-center me-3" 
-                             style="width: 50px; height: 50px; font-size: 1.2rem; font-weight: bold;">
-                            ${initial}
-                        </div>
-                        <div class="flex-grow-1">
-                            <h6 class="fw-bold text-dark mb-0 text-truncate" style="max-width: 200px;" title="${pName}">${pName}</h6>
-                            <small class="text-muted d-block mt-1">
+                        
+                        ${imageHtml} <div class="flex-grow-1 overflow-hidden">
+                            <h6 class="fw-bold text-dark mb-0 text-truncate" title="${pName}">${pName}</h6>
+                            <small class="text-muted d-block mt-1 text-truncate">
                                 <i class="fas fa-barcode me-1"></i>${barcode}
                             </small>
                         </div>
@@ -105,17 +115,12 @@
         });
     }
 
-    // ==========================================
-    // 3. DROPDOWNLARI VE KATEGORİ SAYISINI DOLDUR
-    // ==========================================
+    // 3. Dropdownları Doldur
     async function loadProductDropdowns() {
         try {
-            // --- KATEGORİLERİ ÇEK ---
             const catRes = await fetch('/api/Categories', { headers: { 'Authorization': `Bearer ${token}` } });
             if (catRes.ok) {
                 const cats = await catRes.json();
-
-                // 1. Dropdown'ı Doldur
                 const select = document.getElementById('categorySelect');
                 select.innerHTML = '<option value="" selected disabled>Seçiniz...</option>';
                 cats.forEach(c => {
@@ -125,15 +130,11 @@
                     select.appendChild(opt);
                 });
 
-                // 2. İSTATİSTİK KARTINI GÜNCELLE (DÜZELTME BURADA)
-                // Sistemdeki toplam kategori sayısını direkt API'den alıp yazıyoruz.
+                // İstatistik Güncelleme
                 const countEl = document.getElementById('totalCategoriesCount');
-                if (countEl) {
-                    countEl.innerText = cats.length;
-                }
+                if (countEl) countEl.innerText = cats.length;
             }
 
-            // --- BİRİMLERİ ÇEK ---
             const unitRes = await fetch('/api/UnitTypes', { headers: { 'Authorization': `Bearer ${token}` } });
             if (unitRes.ok) {
                 const units = await unitRes.json();
@@ -149,20 +150,15 @@
         } catch (e) { console.error("Dropdown hatası:", e); }
     }
 
-    // ==========================================
-    // 4. YARDIMCI FONKSİYONLAR
-    // ==========================================
-
-    // İstatistikleri Güncelle (Ürün Bazlı)
+    // 4. İstatistikler
     function updateProductStats(data) {
         if (document.getElementById('totalProductsCount')) {
             document.getElementById('totalProductsCount').innerText = data.length;
             document.getElementById('activeProductsCount').innerText = data.filter(x => x.isActive !== false).length;
         }
-        // Not: Kategori sayısını artık loadProductDropdowns içinde güncelliyoruz.
     }
 
-    // Arama Fonksiyonu
+    // 5. Arama
     window.filterProducts = function () {
         const searchText = document.getElementById('searchInput').value.toLowerCase();
         const filtered = allProducts.filter(p =>
@@ -173,13 +169,17 @@
         renderProducts(filtered);
     };
 
-    // Kaydetme Fonksiyonu
+    // 6. Yeni Ürün Kaydet (GÜNCELLENEN KISIM)
     window.saveProduct = async function () {
         const name = document.getElementById('productNameInput').value;
         const barcode = document.getElementById('barcodeInput').value;
         const categoryId = document.getElementById('categorySelect').value;
         const unitTypeId = document.getElementById('unitTypeSelect').value;
         const description = document.getElementById('descriptionInput').value;
+
+        // YENİ: Resim URL'sini al
+        const imageUrl = document.getElementById('imageUrlInput').value;
+
         const saveButton = document.querySelector('.modal-footer .btn-primary');
 
         if (!name || !barcode || !categoryId || !unitTypeId) {
@@ -193,6 +193,7 @@
             categoryId: categoryId,
             unitTypeId: unitTypeId,
             description: description,
+            imageUrl: imageUrl, // API'ye gönderiyoruz
             isActive: true
         };
 
@@ -210,6 +211,50 @@
             if (res.ok) {
                 alert("✅ Ürün başarıyla tanımlandı!");
                 location.reload();
+            } else {
+                const err = await res.json();
+                alert("Hata: " + (err.message || "Kaydedilemedi."));
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Sunucu hatası.");
+        } finally {
+            saveButton.innerHTML = originalText;
+            saveButton.disabled = false;
+        }
+    };
+    // --- YENİ KATEGORİ KAYDETME ---
+    window.saveCategory = async function () {
+        const name = document.getElementById('catNameInput').value;
+        const description = document.getElementById('catDescInput').value;
+        const saveButton = document.querySelector('#addCategoryModal .btn-primary');
+
+        if (!name) {
+            alert("⚠️ Lütfen kategori adını giriniz.");
+            return;
+        }
+
+        const payload = {
+            categoryName: name,
+            description: description,
+            isActive: true
+        };
+
+        const originalText = saveButton.innerHTML;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
+        saveButton.disabled = true;
+
+        try {
+            // Backend'de CategoriesController > Create metodunuz olmalı
+            const res = await fetch('/api/Categories', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert("✅ Kategori başarıyla eklendi!");
+                location.reload(); // Sayfayı yenile ki yeni kategori dropdown'a gelsin
             } else {
                 const err = await res.json();
                 alert("Hata: " + (err.message || "Kaydedilemedi."));

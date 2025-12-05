@@ -1,8 +1,9 @@
 using Inventory_Management.Domain;
+using Inventory_Management.Domain.Common;
 
 namespace Inventory_Management.Domain.Entities
 {
-    public class Inventories : BaseEntity
+    public class Inventories : BaseEntity, IHasCompany
     {
         public Guid CompanyId { get; set; }
         public virtual Companies Company { get; set; }

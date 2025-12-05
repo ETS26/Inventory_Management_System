@@ -1,9 +1,10 @@
 using Inventory_Management.Domain;
+using Inventory_Management.Domain.Common;
 using System.Text.Json.Serialization;
 
 namespace Inventory_Management.Domain.Entities
 {
-    public class Stock_Movements : BaseEntity
+    public class Stock_Movements : BaseEntity,IHasCompany
     {
         public Guid InventoryId { get; set; }
         public virtual Inventories Inventory { get; set; }
