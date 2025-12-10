@@ -16,26 +16,25 @@ namespace Inventory_Management.Application.Features.Handlers.Delivery_RulesHandl
         }
         public async Task<GetDelivery_RulesByIdQueryResult> Handle(GetDelivery_RulesByIdQuery request, CancellationToken cancellationToken)
         {
-           var val = await _context.Delivery_Rules.FindAsync(request.Id);
+            var val = await _context.Delivery_Rules.FindAsync(request.Id);
             if (val == null) { return null; }
             return new GetDelivery_RulesByIdQueryResult
             {
                 Id = val.Id,
+                SupplierId = val.SupplierId,
                 RuleName = val.RuleName,
-                RuleDescription = val.RuleDescription,
+                StartDate = val.StartDate,
+                EndDate = val.EndDate,
+                Frequency = val.Frequency,
+                Interval = val.Interval,
+                ArrivalTime = val.ArrivalTime,
+                DaysOfWeek = val.DaysOfWeek,
+                DayOfMonth = val.DayOfMonth,
                 LeadTimeDays = val.LeadTimeDays,
                 CalendarColor = val.CalendarColor,
-                IsMonday = val.IsMonday,
-                IsTuesday = val.IsTuesday,
-                IsWednesday = val.IsWednesday,
-                IsThursday = val.IsThursday,
-                IsFriday = val.IsFriday,
-                IsSaturday = val.IsSaturday,
-                IsSunday = val.IsSunday,
                 CreatedAt = val.CreatedAt,
                 UpdatedAt = val.UpdatedAt,
                 IsActive = val.IsActive
-
             };
         }
     }

@@ -33,7 +33,6 @@ namespace Inventory_Management.Persistance.Context
         public DbSet<Products> Products { get; set; }
         public DbSet<Roles> Roles { get; set; }
         public DbSet<Stock_Movements> Stock_Movements { get; set; }
-        public DbSet<Suppliers_Delivery> Suppliers_Deliveries { get; set; }
         public DbSet<Suppliers> Suppliers { get; set; }
         public DbSet<Unit_Types> Unit_Types { get; set; }
         public DbSet<Users> Users { get; set; }

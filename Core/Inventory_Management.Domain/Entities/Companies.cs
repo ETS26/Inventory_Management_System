@@ -13,7 +13,7 @@ namespace Inventory_Management.Domain.Entities
         public virtual ICollection<Suppliers> Suppliers { get; set; }
         public virtual ICollection<Products> Products { get; set; }
         public virtual ICollection<UsersRoles> UsersRoles { get; set; } 
-        public virtual ICollection<Suppliers_Delivery> Suppliers_Deliveries { get; set; }
+        public virtual ICollection<Delivery_Rules> Delivery_Rules { get; set; }
         public virtual ICollection<Categories> Categories { get; set; }
 
     }

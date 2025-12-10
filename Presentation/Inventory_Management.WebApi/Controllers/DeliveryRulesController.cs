@@ -32,7 +32,7 @@ namespace Inventory_Management.WebApi.Controllers
             return Ok("Teslimat kuralı ekleme başarılı");
         }
 
-        [HttpDelete]
+        [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteDeliveryRules(Guid id)
         {
             await _mediator.Send(new DeleteDelivery_RulesCommand(id));

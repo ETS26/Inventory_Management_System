@@ -21,20 +21,20 @@ namespace Inventory_Management.Application.Features.Handlers.Delivery_RulesHandl
         {
             await _context.Delivery_Rules.AddAsync(new Delivery_Rules
             {
+                CompanyId = request.CompanyId,
+                SupplierId = request.SupplierId,
                 RuleName = request.RuleName,
-                RuleDescription = request.RuleDescription, 
+                StartDate = request.StartDate,
+                EndDate = request.EndDate,
+                Frequency = request.Frequency,
+                Interval = request.Interval,
+                ArrivalTime = request.ArrivalTime,
+                DaysOfWeek = request.DaysOfWeek,
+                DayOfMonth = request.DayOfMonth,
                 LeadTimeDays = request.LeadTimeDays,
-                CalendarColor = request.CalendarColor,
-                IsMonday = request.IsMonday,
-                IsTuesday = request.IsTuesday,
-                IsWednesday = request.IsWednesday,
-                IsThursday = request.IsThursday,
-                IsFriday = request.IsFriday,
-                IsSaturday = request.IsSaturday,
-                IsSunday = request.IsSunday
+                CalendarColor = request.CalendarColor
             });
-            await _context.SaveChangesAsync();
-            
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

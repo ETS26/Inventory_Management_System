@@ -13,7 +13,7 @@ namespace Inventory_Management.Domain.Entities
         public string PhoneNumber { get; set; }
         public string Address { get; set; }
 
-        public virtual ICollection<Suppliers_Delivery> Suppliers_Deliveries { get; set; }
+        public virtual ICollection<Delivery_Rules> Delivery_Rules { get; set; }
         public virtual ICollection<Stock_Movements> Stock_Movements { get; set; }
     }
 }

@@ -4,6 +4,7 @@ using Inventory_Management.Persistance.Context;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,25 +19,24 @@ namespace Inventory_Management.Application.Features.Handlers.Delivery_RulesHandl
         }
         public async Task<List<GetDelivery_RulesQueryResult>> Handle(GetDelivery_RulesQuery request, CancellationToken cancellationToken)
         {
-            var val = await _context.Delivery_Rules.ToListAsync();
+            var val = await _context.Delivery_Rules.ToListAsync(cancellationToken);
             return val.Select(x => new GetDelivery_RulesQueryResult
             {
                 Id = x.Id,
+                SupplierId = x.SupplierId,
                 RuleName = x.RuleName,
-                RuleDescription = x.RuleDescription,
+                StartDate = x.StartDate,
+                EndDate = x.EndDate,
+                Frequency = x.Frequency,
+                Interval = x.Interval,
+                ArrivalTime = x.ArrivalTime,
+                DaysOfWeek = x.DaysOfWeek,
+                DayOfMonth = x.DayOfMonth,
                 LeadTimeDays = x.LeadTimeDays,
                 CalendarColor = x.CalendarColor,
-                IsMonday = x.IsMonday,
-                IsTuesday = x.IsTuesday,
-                IsWednesday = x.IsWednesday,
-                IsThursday = x.IsThursday,
-                IsFriday = x.IsFriday,
-                IsSaturday = x.IsSaturday,
-                IsSunday = x.IsSunday,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt,
                 IsActive = x.IsActive
-
             }).ToList();
         }
     }

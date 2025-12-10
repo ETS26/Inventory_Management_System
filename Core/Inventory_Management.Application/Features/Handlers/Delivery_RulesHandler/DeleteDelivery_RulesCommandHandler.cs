@@ -18,9 +18,23 @@ namespace Inventory_Management.Application.Features.Handlers.Delivery_RulesHandl
 
         public async Task Handle(DeleteDelivery_RulesCommand request, CancellationToken cancellationToken)
         {
-            var val = await _context.Delivery_Rules.FindAsync(request.Id);
+            var val = await _context.Delivery_Rules
+                .FindAsync(new object[] { request.Id }, cancellationToken);
+
+            // 2. Kontrol Et: Kayýt var mý?
+            if (val == null)
+            {
+                // Eðer kayýt yoksa (veya filtreye takýldýysa) hata fýrlat
+                throw new Exception("Silinecek kayýt bulunamadý. (ID yanlýþ olabilir veya bu kayda eriþim yetkiniz yok)");
+            }
+
+            // 3. Ýliþkili Veri Kontrolü (Opsiyonel ama Önerilir)
+            // Eðer bu kural bir tedarikçiye atanmýþsa, SQL tarafýnda Foreign Key hatasý alabilirsiniz.
+            // Onu engellemek için silmeden önce iliþkili tablolarý kontrol etmek gerekebilir.
+            // Þimdilik sadece silmeyi deniyoruz:
+
             _context.Delivery_Rules.Remove(val);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

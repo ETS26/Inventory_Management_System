@@ -1,32 +1,38 @@
+using Inventory_Management.Domain.Common;
 using System;
 
 namespace Inventory_Management.Domain.Entities
 {
-    public class Delivery_Rules : BaseEntity
+    public class Delivery_Rules : BaseEntity,IHasCompany
     {
-        public string RuleName { get; set; } // Örn: "Standart Kargo", "Hafta Sonu Teslimat"
-        public string? RuleDescription { get; set; }
+        public enum FrequencyType
+        {
+            Weekly = 1, // Haftalýk
+            Monthly = 2 // Aylýk
+        }
+        public Guid CompanyId { get; set; }
+        public virtual Companies Company { get; set; }
+        public Guid SupplierId { get; set; }
+        public virtual Suppliers Supplier { get; set; }
+        public string RuleName { get; set; } // Örn: "Yaz Sezonu Süt Sevkiyatý"
 
-        // --- TAKVÝM ÝÇÝN GEREKLÝ ALANLAR ---
+        // --- PLANLAMA AYARLARI ---
 
-        // 1. Teslimat Süresi (Lead Time): Sipariþten kaç gün sonra gelir?
-        // Örn: 1 (Ertesi gün), 0 (Ayný gün), 3 (3 gün sonra)
-        public int LeadTimeDays { get; set; }
+        public DateTime StartDate { get; set; } // Plan Baþlangýç
+        public DateTime? EndDate { get; set; }   // Plan Bitiþ (Boþsa sonsuza kadar)
 
-        // 2. Takvim Rengi (Hex Code): Frontend'de ayrým yapmak için
-        // Örn: "#0d6efd" (Mavi), "#dc3545" (Kýrmýzý)
+        public FrequencyType Frequency { get; set; } // Haftalýk mý, Aylýk mý?
+        public int Interval { get; set; } = 1;       // Kaç haftada/ayda bir? (Varsayýlan 1)
+        public TimeSpan ArrivalTime { get; set; }
+
+        // Haftalýk ise hangi günler? (Pzt, Sal...)
+        // Bunlarý tek bir string'de tutabiliriz: "1,3,5" gibi (Pzt, Çar, Cum)
+        public string? DaysOfWeek { get; set; }
+
+        // Aylýk ise ayýn kaçýncý günü? (Örn: 15'i)
+        public int? DayOfMonth { get; set; }
+
+        public int LeadTimeDays { get; set; } // Teslimat süresi
         public string CalendarColor { get; set; }
-
-        // 3. Hangi Günler Teslimat Var? (Recurring Pattern)
-        public bool IsMonday { get; set; }
-        public bool IsTuesday { get; set; }
-        public bool IsWednesday { get; set; }
-        public bool IsThursday { get; set; }
-        public bool IsFriday { get; set; }
-        public bool IsSaturday { get; set; }
-        public bool IsSunday { get; set; }
-
-        // Ýliþkiler
-        // public virtual ICollection<Suppliers_Delivery> Suppliers_Deliveries { get; set; }
     }
 }

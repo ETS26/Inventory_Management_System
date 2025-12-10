@@ -56,7 +56,7 @@ const Utils = {
      * Para formatı
      */
     formatCurrency(amount) {
-        return `$${parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `₺${parseFloat(amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     },
 
     /**
@@ -520,46 +520,81 @@ class MenuManager {
 // CALENDAR INITIALIZATION
 // ==========================================
 class CalendarManager {
-    static init() {
+    static async init() {
         const calendarEl = document.getElementById('calendar');
         if (!calendarEl) return;
 
-        const calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,listWeek'
-            },
-            height: 650,
-            themeSystem: 'bootstrap5',
-            events: [
-                {
-                    title: 'TechSupply Co. (50 Mouse)',
-                    start: '2025-12-05',
-                    backgroundColor: '#0d6efd',
-                    borderColor: '#0d6efd'
-                },
-                {
-                    title: 'Cable World (100 USB-C)',
-                    start: '2025-12-10',
-                    backgroundColor: '#198754',
-                    borderColor: '#198754'
-                },
-                {
-                    title: 'Vision Tech (Webcams)',
-                    start: '2025-12-15',
-                    backgroundColor: '#ffc107',
-                    borderColor: '#ffc107',
-                    textColor: '#000'
-                }
-            ],
-            eventClick: function (info) {
-                alert('Teslimat Detayı:\n' + info.event.title);
-            }
-        });
+        const token = localStorage.getItem('jwtToken');
 
-        calendar.render();
+        try {
+            // 1. Verileri Çek (Tıpkı Suppliers sayfasındaki gibi)
+            const response = await fetch('/api/DeliveryRules', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            let eventsData = [];
+
+            if (response.ok) {
+                const apiData = await response.json();
+
+                // 2. Verileri FullCalendar Formatına Çevir
+                eventsData = apiData.map(item => ({
+                    title: item.ruleName, // Plan Adı
+
+                    // Haftalık Tekrar Günleri (Örn: [1,3])
+                    daysOfWeek: item.daysOfWeek ? (Array.isArray(item.daysOfWeek) ? item.daysOfWeek : item.daysOfWeek.split(',').map(Number)) : null,
+
+                    // Tarih Aralığı
+                    startRecur: item.startDate ? item.startDate.split('T')[0] : null,
+                    // Bitiş tarihine +1 gün ekle (FullCalendar kuralı)
+                    endRecur: item.endDate ? new Date(new Date(item.endDate).getTime() + 86400000).toISOString().split('T')[0] : null,
+
+                    // Saat
+                    startTime: item.arrivalTime || '09:00:00',
+
+                    // Renkler
+                    backgroundColor: item.calendarColor || '#0d6efd',
+                    borderColor: item.calendarColor || '#0d6efd',
+                    textColor: '#fff',
+
+                    // Ekstra Bilgi
+                    extendedProps: {
+                        description: "Tedarikçi Planı"
+                    }
+                }));
+            }
+
+            // 3. Takvimi Başlat
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listWeek' // Dashboard'da daha sade görünüm
+                },
+                height: 500, // Dashboard için biraz daha kısa
+                themeSystem: 'bootstrap5',
+                locale: 'tr',
+                events: eventsData,
+
+                // Tıklama Olayı: Sadece Bilgi Ver (Düzenleme Yok)
+                eventClick: function (info) {
+                    alert(`📦 Teslimat Detayı:\n\nPlan: ${info.event.title}\nSaat: ${info.event.start ? info.event.start.toLocaleTimeString() : info.event._def.recurringDef.typeData.startTime}`);
+                },
+
+                // Mouse üzerine gelince ipucu
+                eventDidMount: function (info) {
+                    info.el.title = info.event.title;
+                    info.el.style.cursor = 'help'; // Tıklanabilir değil, bilgi amaçlı imleç
+                }
+            });
+
+            calendar.render();
+
+        } catch (error) {
+            console.error("Dashboard Takvim Hatası:", error);
+            calendarEl.innerHTML = '<div class="text-danger text-center p-4 small">Takvim verileri yüklenemedi.</div>';
+        }
     }
 }
 

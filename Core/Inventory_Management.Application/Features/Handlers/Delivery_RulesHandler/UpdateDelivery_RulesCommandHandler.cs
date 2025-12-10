@@ -17,20 +17,22 @@ namespace Inventory_Management.Application.Features.Handlers.Delivery_RulesHandl
         public async Task Handle(UpdateDelivery_RulesCommand request, CancellationToken cancellationToken)
         {
             var val = await _context.Delivery_Rules.FindAsync(request.Id);
-            val.RuleName = request.RuleName;
-            val.RuleDescription = request.RuleDescription;
-            val.LeadTimeDays = request.LeadTimeDays;
-            val.CalendarColor = request.CalendarColor;
-            val.IsMonday = request.IsMonday;
-            val.IsTuesday = request.IsTuesday;
-            val.IsWednesday = request.IsWednesday;
-            val.IsThursday = request.IsThursday;
-            val.IsFriday = request.IsFriday;
-            val.IsSaturday = request.IsSaturday;
-            val.IsSunday = request.IsSunday;
-            val.IsActive = request.IsActive;
-            val.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            if (val != null)
+            {
+                val.SupplierId = request.SupplierId;
+                val.RuleName = request.RuleName;
+                val.StartDate = request.StartDate;
+                val.EndDate = request.EndDate;
+                val.Frequency = request.Frequency;
+                val.Interval = request.Interval;
+                val.ArrivalTime = request.ArrivalTime;
+                val.DaysOfWeek = request.DaysOfWeek;
+                val.DayOfMonth = request.DayOfMonth;
+                val.LeadTimeDays = request.LeadTimeDays;
+                val.CalendarColor = request.CalendarColor;
+                val.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync(cancellationToken);
+            }
         }
     }
 }

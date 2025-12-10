@@ -52,5 +52,12 @@ namespace Inventory_Management.WebApi.Controllers
             await _mediator.Send(command);
             return Ok("Tedarikçi güncelleme başarılı");
         }
+
+        [HttpGet("calendar")]
+        public async Task<IActionResult> GetCalendar()
+        {
+            var result = await _mediator.Send(new GetSuppliersCalendarQuery());
+            return Ok(result);
+        }
     }
   }
