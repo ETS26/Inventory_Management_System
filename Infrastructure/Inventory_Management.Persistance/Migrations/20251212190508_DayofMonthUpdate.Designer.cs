@@ -4,6 +4,7 @@ using Inventory_Management.Persistance.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Inventory_Management.Persistance.Migrations
 {
     [DbContext(typeof(Inventory_Management_Context))]
-    partial class Inventory_Management_ContextModelSnapshot : ModelSnapshot
+    [Migration("20251212190508_DayofMonthUpdate")]
+    partial class DayofMonthUpdate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -109,7 +112,7 @@ namespace Inventory_Management.Persistance.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("DaysOfMonth")
+                    b.Property<string>("DayOfMonth")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("DaysOfWeek")

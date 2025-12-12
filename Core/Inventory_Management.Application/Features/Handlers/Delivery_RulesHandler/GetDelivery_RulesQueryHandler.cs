@@ -31,7 +31,7 @@ namespace Inventory_Management.Application.Features.Handlers.Delivery_RulesHandl
                 Interval = x.Interval,
                 ArrivalTime = x.ArrivalTime,
                 DaysOfWeek = x.DaysOfWeek,
-                DayOfMonth = x.DayOfMonth,
+                DaysOfMonth = x.DaysOfMonth,
                 LeadTimeDays = x.LeadTimeDays,
                 CalendarColor = x.CalendarColor,
                 CreatedAt = x.CreatedAt,

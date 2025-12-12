@@ -30,7 +30,7 @@ namespace Inventory_Management.Domain.Entities
         public string? DaysOfWeek { get; set; }
 
         // Aylýk ise ayýn kaçýncý günü? (Örn: 15'i)
-        public int? DayOfMonth { get; set; }
+        public string? DaysOfMonth { get; set; }
 
         public int LeadTimeDays { get; set; } // Teslimat süresi
         public string CalendarColor { get; set; }

@@ -29,7 +29,7 @@ namespace Inventory_Management.Application.Features.Handlers.Delivery_RulesHandl
                 Interval = val.Interval,
                 ArrivalTime = val.ArrivalTime,
                 DaysOfWeek = val.DaysOfWeek,
-                DayOfMonth = val.DayOfMonth,
+                DaysOfMonth = val.DaysOfMonth,
                 LeadTimeDays = val.LeadTimeDays,
                 CalendarColor = val.CalendarColor,
                 CreatedAt = val.CreatedAt,

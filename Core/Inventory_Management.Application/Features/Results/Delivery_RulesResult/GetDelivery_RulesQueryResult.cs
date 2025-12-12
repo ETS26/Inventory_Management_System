@@ -14,7 +14,7 @@ namespace Inventory_Management.Application.Features.Results.Delivery_RulesResult
         public int Interval { get; set; }
         public TimeSpan ArrivalTime { get; set; }
         public string? DaysOfWeek { get; set; }
-        public int? DayOfMonth { get; set; }
+        public string? DaysOfMonth { get; set; }
         public int LeadTimeDays { get; set; }
         public string CalendarColor { get; set; }
     }

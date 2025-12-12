@@ -27,7 +27,7 @@ namespace Inventory_Management.Application.Features.Handlers.Delivery_RulesHandl
                 val.Interval = request.Interval;
                 val.ArrivalTime = request.ArrivalTime;
                 val.DaysOfWeek = request.DaysOfWeek;
-                val.DayOfMonth = request.DayOfMonth;
+                val.DaysOfMonth = request.DaysOfMonth;
                 val.LeadTimeDays = request.LeadTimeDays;
                 val.CalendarColor = request.CalendarColor;
                 val.UpdatedAt = DateTime.UtcNow;

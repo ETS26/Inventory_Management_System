@@ -1,88 +1,273 @@
 ﻿using Inventory_Management.Application.Features.Queries.SuppliersQuery;
+
 using Inventory_Management.Application.Features.Results.SuppliersResult;
+
+using Inventory_Management.Domain.Entities;
+
 using Inventory_Management.Persistance.Context;
+
 using MediatR;
+
 using Microsoft.EntityFrameworkCore;
+
 using System;
+
 using System.Collections.Generic;
+
 using System.Linq;
+
 using System.Threading;
+
 using System.Threading.Tasks;
 
+
+
 namespace Inventory_Management.Application.Features.Handlers.SuppliersHandler
+
 {
+
     public class GetSuppliersCalendarQueryHandler : IRequestHandler<GetSuppliersCalendarQuery, List<GetSuppliersCalenderQueryResult>>
+
     {
+
         private readonly Inventory_Management_Context _context;
 
+
+
         public GetSuppliersCalendarQueryHandler(Inventory_Management_Context context)
+
         {
+
             _context = context;
+
         }
 
-        public async Task<List<GetSuppliersCalenderQueryResult>> Handle(GetSuppliersCalendarQuery request, CancellationToken cancellationToken)
-        {
-            // 1. Kuralları ve Bağlı Olduğu Tedarikçiyi Çek
-            var rules = await _context.Delivery_Rules
-                .AsNoTracking()
-                .Include(x => x.Company) // Gerekirse
-                                         // Eğer Delivery_Rules tablosunda SupplierId varsa:
-                                         // .Include(x => x.Supplier) 
-                                         // NOT: Eğer Delivery_Rules tablosunda Supplier ilişkisi yoksa,
-                                         // bunu Suppliers_Delivery tablosundan joinleyerek çekmemiz gerekebilir.
-                                         // Ancak son yapımızda Delivery_Rules içine SupplierId eklememişsek,
-                                         // Suppliers_Delivery tablosunu sorgulamak daha doğru olabilir.
 
-                // HIZLI ÇÖZÜM İÇİN VARSAYIM: 
-                // Delivery_Rules tablosunu doğrudan sorguluyoruz.
+
+        public async Task<List<GetSuppliersCalenderQueryResult>> Handle(GetSuppliersCalendarQuery request, CancellationToken cancellationToken)
+
+        {
+
+            var rules = await _context.Delivery_Rules
+
+                .AsNoTracking()
+
+                .Include(x => x.Supplier)
+
                 .ToListAsync(cancellationToken);
 
-            // Eğer Tedarikçi İsmi Delivery_Rules'da yoksa, Suppliers_Delivery'den çekmeliyiz.
-            // Ama basitlik adına şimdilik kural ismini başlık yapıyoruz.
+
 
             var result = new List<GetSuppliersCalenderQueryResult>();
 
+
+
             foreach (var rule in rules)
+
             {
-                // Günler boşsa atla
-                if (string.IsNullOrWhiteSpace(rule.DaysOfWeek)) continue;
 
-                // "1,3,5" stringini [1, 3, 5] dizisine çevir
-                var days = rule.DaysOfWeek.Split(',')
-                                        .Select(s => int.TryParse(s, out int n) ? n : -1)
-                                        .Where(n => n != -1)
-                                        .ToArray();
+                // HAFTALIK PLANLAR (Frequency = 1)
 
-                if (days.Length > 0)
+                if (rule.Frequency == Delivery_Rules.FrequencyType.Weekly)
+
                 {
-                    result.Add(new GetSuppliersCalenderQueryResult
+
+                    if (string.IsNullOrWhiteSpace(rule.DaysOfWeek)) continue;
+
+
+
+                    var days = rule.DaysOfWeek.Split(',')
+
+                        .Select(s => int.TryParse(s.Trim(), out int n) ? n : -1)
+
+                        .Where(n => n >= 0 && n <= 6)
+
+                        .ToArray();
+
+                    var Weekinterval = rule.Interval > 0 ? rule.Interval : 1;
+
+
+
+                    if (days.Length > 0)
+
                     {
-                        Id = rule.Id,
 
-                        // Başlık: Kural Adı (veya Tedarikçi Adı eklenebilir)
-                        Title = rule.RuleName,
+                        result.Add(new GetSuppliersCalenderQueryResult
 
-                        Color = rule.CalendarColor ?? "#3788d8",
-                        DaysOfWeek = days,
+                        {
 
-                        // TimeSpan'i String saate çevir (14:30:00 -> "14:30")
-                        StartTime = rule.ArrivalTime.ToString(@"hh\:mm"),
+                            Id = rule.Id,
 
-                        LeadTime = rule.LeadTimeDays,
-                        Description = rule.RuleName, // veya Description alanı
+                            Title = rule.RuleName,
 
-                        // --- TARİH SINIRLAMASI ---
-                        StartRecur = rule.StartDate.ToString("yyyy-MM-dd"),
+                            RuleName = rule.RuleName,
 
-                        // Bitiş tarihi varsa +1 gün ekle (FullCalendar kuralı), yoksa null bırak
-                        EndRecur = rule.EndDate.HasValue
-                            ? rule.EndDate.Value.AddDays(1).ToString("yyyy-MM-dd")
-                            : null
-                    });
+                            Color = rule.CalendarColor ?? "#3788d8",
+
+                            CalendarColor = rule.CalendarColor ?? "#3788d8",
+
+                            DaysOfWeek = days,
+
+                            StartTime = rule.ArrivalTime.ToString(@"hh\:mm"),
+
+                            ArrivalTime = rule.ArrivalTime.ToString(@"hh\:mm\:ss"),
+
+                            LeadTime = rule.LeadTimeDays,
+
+                            LeadTimeDays = rule.LeadTimeDays,
+
+                            Description = rule.RuleName,
+
+                            SupplierId = rule.SupplierId,
+
+                            Frequency = (int)rule.Frequency,
+
+                            Interval = rule.Interval,
+
+                            StartRecur = rule.StartDate.ToString("yyyy-MM-dd"),
+
+                            StartDate = rule.StartDate.ToString("yyyy-MM-ddTHH:mm:ss"),
+
+                            EndRecur = rule.EndDate?.AddDays(1).ToString("yyyy-MM-dd"),
+
+                            EndDate = rule.EndDate?.ToString("yyyy-MM-ddTHH:mm:ss")
+
+                        });
+
+                    }
+
                 }
+
+                // AYLIK PLANLAR (Frequency = 2) - TAM YENİ
+
+                else if (rule.Frequency == Delivery_Rules.FrequencyType.Monthly)
+
+                {
+
+                    // ✅ KRİTİK: DayOfMonth alanını kontrol et
+
+                    if (string.IsNullOrWhiteSpace(rule.DaysOfMonth)) continue;
+
+
+
+                    // "4,7,31" string'ini parse et
+
+                    var DaysOfMonth = rule.DaysOfMonth.Split(',')
+
+                        .Select(s => int.TryParse(s.Trim(), out int n) ? n : -1)
+
+                        .Where(n => n >= 1 && n <= 31)
+
+                        .ToList();
+
+
+
+                    if (DaysOfMonth.Count == 0) continue;
+
+
+
+                    // Her ay için tarihleri hesapla
+
+                    var startDate = rule.StartDate;
+
+                    var endDate = rule.EndDate ?? startDate.AddYears(1);
+
+                    var Monthinterval = rule.Interval > 0 ? rule.Interval : 1;
+
+
+
+                    var currentMonth = new DateTime(startDate.Year, startDate.Month, 1);
+
+
+
+                    while (currentMonth <= endDate)
+
+                    {
+
+                        var lastDayOfMonth = DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month);
+
+
+
+                        foreach (var DayOfMonth in DaysOfMonth)
+
+                        {
+
+                            // Ayda olmayan günleri son güne ayarla
+
+                            var actualDay = Math.Min(DayOfMonth, lastDayOfMonth);
+
+                            var eventDate = new DateTime(currentMonth.Year, currentMonth.Month, actualDay)
+
+                                .Add(rule.ArrivalTime);
+
+
+
+                            // Tarih aralığı kontrolü
+
+                            if (eventDate >= startDate && eventDate <= endDate)
+
+                            {
+
+                                result.Add(new GetSuppliersCalenderQueryResult
+
+                                {
+
+                                    Id = rule.Id,
+
+                                    Title = rule.RuleName,
+
+                                    RuleName = rule.RuleName,
+
+                                    Color = rule.CalendarColor ?? "#3788d8",
+
+                                    CalendarColor = rule.CalendarColor ?? "#3788d8",
+
+                                    Start = eventDate.ToString("yyyy-MM-ddTHH:mm:ss"), // ✅ TEKİL TARİH
+
+                                    StartDate = rule.StartDate.ToString("yyyy-MM-ddTHH:mm:ss"),
+
+                                    EndDate = rule.EndDate?.ToString("yyyy-MM-ddTHH:mm:ss"),
+
+                                    ArrivalTime = rule.ArrivalTime.ToString(@"hh\:mm\:ss"),
+
+                                    LeadTime = rule.LeadTimeDays,
+
+                                    LeadTimeDays = rule.LeadTimeDays,
+
+                                    Description = rule.RuleName,
+
+                                    SupplierId = rule.SupplierId,
+
+                                    Frequency = (int)rule.Frequency,
+
+                                    Interval = Monthinterval,
+
+                                    DaysOfMonth = rule.DaysOfMonth // ✅ "4,7,31" string'i
+
+                                });
+
+                            }
+
+                        }
+
+
+
+                        // Interval kadar ay atla
+
+                        currentMonth = currentMonth.AddMonths(Monthinterval);
+
+                    }
+
+                }
+
             }
 
+
+
             return result;
+
         }
+
     }
+
 }

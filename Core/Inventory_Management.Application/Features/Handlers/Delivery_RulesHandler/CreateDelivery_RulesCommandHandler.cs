@@ -30,7 +30,7 @@ namespace Inventory_Management.Application.Features.Handlers.Delivery_RulesHandl
                 Interval = request.Interval,
                 ArrivalTime = request.ArrivalTime,
                 DaysOfWeek = request.DaysOfWeek,
-                DayOfMonth = request.DayOfMonth,
+                DaysOfMonth = request.DaysOfMonth,
                 LeadTimeDays = request.LeadTimeDays,
                 CalendarColor = request.CalendarColor
             });
