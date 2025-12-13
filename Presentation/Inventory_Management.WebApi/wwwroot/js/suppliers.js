@@ -4,19 +4,16 @@
     let calendarInit = false;
     let currentView = 'list';
 
-    // Global değişkenler
     let calendar;
     let selectedEventId = null;
     let selectedEventData = null;
 
     document.addEventListener('DOMContentLoaded', function () {
         if (!token) { window.location.href = 'login.html'; return; }
-
         loadSuppliers();
         loadDropdownForSchedule();
     });
 
-    // 1. Görünüm Değiştir
     window.toggleView = function (view) {
         currentView = view;
         const list = document.getElementById('listView');
@@ -56,7 +53,6 @@
         if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
     }
 
-    // 2. Tedarikçileri Listele
     async function loadSuppliers() {
         const container = document.getElementById('suppliersContainer');
         if (!container) return;
@@ -100,7 +96,6 @@
         });
     }
 
-    // 3. Takvim ve Planlama
     async function initCalendar() {
         const calendarEl = document.getElementById('supplierCalendar');
         if (!calendarEl) return;
@@ -108,7 +103,10 @@
         if (calendarInit && calendar) { calendar.render(); return; }
 
         try {
-            const response = await fetch('/api/DeliveryRules', { headers: { 'Authorization': `Bearer ${token}` } });
+            const response = await fetch('/api/Suppliers/calendar', {
+                headers: { 'Authorization': `Bearer ${token}` },
+                cache: 'no-cache' // Tarayıcı önbelleğini devre dışı bırak
+            });
             let eventsData = [];
 
             if (response.ok) {
@@ -133,24 +131,26 @@
                         }
                     };
 
-                    // 1. Backend hesaplamışsa (Aylık veya Haftalık-Interval'li)
+                    // ✅ 1. Backend hesaplamış tarih varsa (Aylık VEYA Haftalık interval>1)
                     if (item.start) {
                         return [{ ...baseEvent, start: item.start, allDay: false }];
                     }
 
-                    // 2. Standart Haftalık Tekrar (Her hafta)
-                    if (item.daysOfWeek) {
+                    // ✅ 2. Haftalık Recurring (interval=1, Backend daysOfWeek göndermiş)
+                    if (item.frequency === 1 && item.daysOfWeek) {
                         return [{
                             ...baseEvent,
-                            daysOfWeek: Array.isArray(item.daysOfWeek) ? item.daysOfWeek : item.daysOfWeek.split(',').map(Number),
+                            daysOfWeek: Array.isArray(item.daysOfWeek)
+                                ? item.daysOfWeek
+                                : item.daysOfWeek.split(',').map(Number),
                             startRecur: item.startDate ? item.startDate.split('T')[0] : null,
                             endRecur: item.endDate ? item.endDate.split('T')[0] : null,
                             startTime: item.arrivalTime ? item.arrivalTime.substring(0, 5) : '09:00'
                         }];
                     }
 
-                    // 3. Aylık (Interval destekli) - Frontend Fallback
-                    else if (item.frequency === 2) {
+                    // ✅ 3. Aylık Fallback (Backend hesaplamamışsa - normalde olmamalı)
+                    if (item.frequency === 2) {
                         const daysField = item.daysOfMonth || item.DaysOfMonth || item.dayOfMonth;
                         if (!daysField) return [];
 
@@ -204,6 +204,7 @@
                         }
                         return events;
                     }
+
                     return [];
                 });
             }
@@ -247,8 +248,6 @@
         } catch (e) { console.error(e); }
     }
 
-    // --- FORM İŞLEMLERİ ---
-
     window.openEditModal = function () {
         hideModal('actionChoiceModal');
         resetScheduleForm();
@@ -289,12 +288,20 @@
         document.querySelectorAll('.day-check').forEach(cb => cb.checked = false);
 
         if (freq === 1) {
-            const days = props.daysOfWeek || [];
+            // Haftalık planlar için günler, interval=1 ise (sayı array'i olarak) daysOfWeek, 
+            // interval>1 ise (string olarak) daysOfMonth içinde olabilir.
+            const days = props.daysOfWeek || props.daysOfMonth || [];
             const daysArr = (typeof days === 'string') ? days.split(',') : days;
+            
             if (Array.isArray(daysArr)) {
                 daysArr.forEach(d => {
-                    const cb = document.getElementById('day' + d);
-                    if (cb) cb.checked = true;
+                    // d bir sayı (interval=1) veya string (interval>1) olabilir.
+                    // null, undefined, boş string gibi değerleri atla ama 0'ı (Pazar) atlama.
+                    if (d !== null && d !== undefined && d !== '') {
+                        const dayStr = String(d).trim();
+                        const cb = document.getElementById('day' + dayStr);
+                        if (cb) cb.checked = true;
+                    }
                 });
             }
         } else if (freq === 2) {
@@ -429,7 +436,6 @@
         } catch (e) { console.error(e); }
     }
 
-    // Tedarikçi İşlemleri
     window.editSupplier = function (id) {
         const supplier = allSuppliers.find(s => s.id === id);
         if (!supplier) return;

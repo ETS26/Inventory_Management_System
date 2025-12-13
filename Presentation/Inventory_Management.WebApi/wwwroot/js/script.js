@@ -527,65 +527,81 @@ class CalendarManager {
         const token = localStorage.getItem('jwtToken');
 
         try {
-            // 1. Verileri Çek (Tıpkı Suppliers sayfasındaki gibi)
-            const response = await fetch('/api/DeliveryRules', {
-                headers: { 'Authorization': `Bearer ${token}` }
+            // 1. Verileri DOĞRU adresten çek
+            const response = await fetch('/api/Suppliers/calendar', {
+                headers: { 'Authorization': `Bearer ${token}` },
+                cache: 'no-cache' // Tarayıcı önbelleğini devre dışı bırak
             });
+            if (!response.ok) {
+                throw new Error('Takvim verileri alınamadı.');
+            }
+            const apiData = await response.json();
 
-            let eventsData = [];
-
-            if (response.ok) {
-                const apiData = await response.json();
-
-                // 2. Verileri FullCalendar Formatına Çevir
-                eventsData = apiData.map(item => ({
-                    title: item.ruleName, // Plan Adı
-
-                    // Haftalık Tekrar Günleri (Örn: [1,3])
-                    daysOfWeek: item.daysOfWeek ? (Array.isArray(item.daysOfWeek) ? item.daysOfWeek : item.daysOfWeek.split(',').map(Number)) : null,
-
-                    // Tarih Aralığı
-                    startRecur: item.startDate ? item.startDate.split('T')[0] : null,
-                    // Bitiş tarihine +1 gün ekle (FullCalendar kuralı)
-                    endRecur: item.endDate ? new Date(new Date(item.endDate).getTime() + 86400000).toISOString().split('T')[0] : null,
-
-                    // Saat
-                    startTime: item.arrivalTime || '09:00:00',
-
-                    // Renkler
+            // 2. Verileri suppliers.js'teki güncel mantıkla işle
+            const eventsData = apiData.flatMap(item => {
+                const baseEvent = {
+                    id: item.id,
+                    title: item.title || item.ruleName,
                     backgroundColor: item.calendarColor || '#0d6efd',
                     borderColor: item.calendarColor || '#0d6efd',
                     textColor: '#fff',
-
-                    // Ekstra Bilgi
                     extendedProps: {
                         description: "Tedarikçi Planı"
                     }
-                }));
-            }
+                };
 
-            // 3. Takvimi Başlat
+                // Backend'in hesapladığı kesin tarihli eventler (Aralıklı veya Aylık)
+                if (item.start) {
+                    return [{ ...baseEvent, start: item.start, allDay: false }];
+                }
+
+                // Tekrarlayan haftalık eventler (interval=1)
+                if (item.frequency === 1 && item.daysOfWeek) {
+                    return [{
+                        ...baseEvent,
+                        daysOfWeek: Array.isArray(item.daysOfWeek)
+                            ? item.daysOfWeek
+                            : item.daysOfWeek.split(',').map(Number),
+                        startRecur: item.startRecur,
+                        endRecur: item.endRecur,
+                        startTime: item.startTime || '09:00'
+                    }];
+                }
+
+                return [];
+            });
+
+            // 3. Takvimi Salt Okunur modda başlat
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,listWeek' // Dashboard'da daha sade görünüm
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
                 },
-                height: 500, // Dashboard için biraz daha kısa
-                themeSystem: 'bootstrap5',
+                height: 500,
                 locale: 'tr',
                 events: eventsData,
-
-                // Tıklama Olayı: Sadece Bilgi Ver (Düzenleme Yok)
-                eventClick: function (info) {
-                    alert(`📦 Teslimat Detayı:\n\nPlan: ${info.event.title}\nSaat: ${info.event.start ? info.event.start.toLocaleTimeString() : info.event._def.recurringDef.typeData.startTime}`);
+                
+                // Salt okunur özellikler
+                selectable: false,
+                editable: false,
+                eventClick: function(info) {
+                    // Tıklamayı engelle, hiçbir şey yapma
+                    info.jsEvent.preventDefault(); 
                 },
 
-                // Mouse üzerine gelince ipucu
+                // Mouse üzerine gelince ipucu göstermeye devam et
                 eventDidMount: function (info) {
-                    info.el.title = info.event.title;
-                    info.el.style.cursor = 'help'; // Tıklanabilir değil, bilgi amaçlı imleç
+                    if (info.event.title) {
+                        new bootstrap.Tooltip(info.el, {
+                            title: info.event.title,
+                            placement: 'top',
+                            trigger: 'hover',
+                            container: 'body'
+                        });
+                        info.el.style.cursor = 'default'; // İmleci standart yap
+                    }
                 }
             });
 
@@ -593,7 +609,7 @@ class CalendarManager {
 
         } catch (error) {
             console.error("Dashboard Takvim Hatası:", error);
-            calendarEl.innerHTML = '<div class="text-danger text-center p-4 small">Takvim verileri yüklenemedi.</div>';
+            calendarEl.innerHTML = '<div class="alert alert-danger text-center p-4 small">Takvim verileri yüklenemedi.</div>';
         }
     }
 }
