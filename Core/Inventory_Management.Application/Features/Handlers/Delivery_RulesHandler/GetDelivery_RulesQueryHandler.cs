@@ -23,6 +23,7 @@ namespace Inventory_Management.Application.Features.Handlers.Delivery_RulesHandl
             return val.Select(x => new GetDelivery_RulesQueryResult
             {
                 Id = x.Id,
+                CompanyId = x.CompanyId,
                 SupplierId = x.SupplierId,
                 RuleName = x.RuleName,
                 StartDate = x.StartDate,

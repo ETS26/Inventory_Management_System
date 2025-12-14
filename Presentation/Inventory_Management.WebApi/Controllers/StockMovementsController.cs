@@ -19,9 +19,10 @@ namespace Inventory_Management.WebApi.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> StockMovementsList()
+        public async Task<IActionResult> StockMovementsList([FromQuery] bool? isActive)
         {
-            var val = await _mediator.Send(new GetStock_MovementsQuery());
+            var query = new GetStock_MovementsQuery { IsActive = isActive };
+            var val = await _mediator.Send(query);
             return Ok(val);
         }
 

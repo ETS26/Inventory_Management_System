@@ -7,5 +7,6 @@ namespace Inventory_Management.Application.Features.Queries.Stock_MovementsQuery
 {
     public class GetStock_MovementsQuery : IRequest<List<GetStock_MovementsQueryResult>>
     {
+        public bool? IsActive { get; set; }
     }
 }

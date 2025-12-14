@@ -22,5 +22,7 @@ namespace Inventory_Management.Application.Features.Results.InventoriesResult
         public string CategoryName { get; set; }     // Product.Category.CategoryName
         public string UnitTypeName { get; set; }     // Product.UnitType.UnitName
         public string CompanyName { get; set; }
+
+        public bool IsActive { get; set; }
     }
 }

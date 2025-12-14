@@ -141,100 +141,81 @@ class Dashboard {
             movement: null,
             category: null
         };
-        this.stats = {
-            inventoryValue: 0,
-            criticalStock: 0,
-            suppliers: 0,
-            monthlySales: 0
-        };
     }
 
     async init() {
         console.log("📊 Dashboard başlatılıyor...");
-
         try {
-            await Promise.all([
-                this.loadDashboardStats(),
-                this.loadInventoryStats(),
-                this.loadRecentActivity()
+            // 1. Tüm verileri tek seferde, verimli bir şekilde çek
+            const [inventories, suppliers, movements] = await Promise.all([
+                Utils.fetchAPI('/Inventories?IsActive=true'), // Sadece aktif envanteri çek
+                Utils.fetchAPI('/Suppliers?IsActive=true'),   // Sadece aktif tedarikçileri çek
+                Utils.fetchAPI('/StockMovements')
             ]);
+
+            console.log("✅ API Verileri Yüklendi", {
+                inventories: inventories.length,
+                suppliers: suppliers.length,
+                movements: movements.length
+            });
+
+            // 2. Verileri ilgili modüllere dağıt
+            this.processStatsCards(inventories, suppliers, movements);
+            this.processInventoryWidgets(inventories);
+            this.processRecentActivity(movements);
+            this.renderMovementChart(movements); // DİNAMİK GRAFİK
+
         } catch (error) {
-            console.error("Dashboard Yükleme Hatası:", error);
+            console.error("❌ Dashboard Yükleme Hatası:", error);
+            // Hata durumunda kullanıcıya bilgi ver
+            document.getElementById('criticalStockTable').innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">Dashboard verileri yüklenemedi.</td></tr>`;
         }
     }
 
     /**
-     * Ana İstatistik Kartlarını Yükle
+     * Ana İstatistik Kartlarını İşle
      */
-    async loadDashboardStats() {
-        try {
-            // Paralel olarak tüm verileri çek
-            const [inventories, suppliers, movements] = await Promise.all([
-                Utils.fetchAPI('/Inventories'),
-                Utils.fetchAPI('/Suppliers'),
-                Utils.fetchAPI('/StockMovements')
-            ]);
+    processStatsCards(inventories, suppliers, movements) {
+        // 1. Toplam Envanter Değeri
+        const totalInventoryValue = inventories
+            .filter(item => {
+                const status = (item.IsActive !== undefined) ? item.IsActive : item.isActive;
+                return status === true || status === 1;
+            })
+            .reduce((sum, item) => sum + (item.quantity * item.salePrice), 0);
 
-            // 1. Toplam Envanter Değeri
-            const totalInventoryValue = inventories.reduce((sum, item) => {
-                return sum + (item.quantity * item.salePrice);
-            }, 0);
+        // 2. Kritik Stok Sayısı
+        const criticalCount = inventories.filter(p => p.quantity <= p.criticalStockQuantity && p.quantity > 0).length;
 
-            // 2. Kritik Stok Sayısı
-            const criticalCount = inventories.filter(p =>
-                p.quantity <= p.criticalStockQuantity
-            ).length;
+        // 3. Aktif Tedarikçi Sayısı (Veri zaten filtrelenmiş geldi)
+        const activeSuppliers = suppliers.length;
 
-            // 3. Aktif Tedarikçi Sayısı
-            const activeSuppliers = suppliers.filter(s => s.isActive !== false).length;
+        // 4. Aylık Satış Tutarı (Bu ayın çıkış hareketleri)
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        const monthlySalesValue = movements
+            .filter(m => {
+                const moveDate = new Date(m.createdAt);
+                const isOutcome = (m.moveTypeName || '').toLowerCase().includes('out') || (m.moveTypeName || '').toLowerCase().includes('çıkış');
+                return isOutcome && moveDate.getMonth() === currentMonth && moveDate.getFullYear() === currentYear;
+            })
+            .reduce((sum, m) => sum + (m.payment || 0), 0);
+        
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const lastYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+        const lastMonthSales = movements
+            .filter(m => {
+                const moveDate = new Date(m.createdAt);
+                const isOutcome = (m.moveTypeName || '').toLowerCase().includes('out');
+                return isOutcome && moveDate.getMonth() === lastMonth && moveDate.getFullYear() === lastYear;
+            })
+            .reduce((sum, m) => sum + (m.payment || 0), 0);
 
-            // 4. Aylık Satış Tutarı (Bu ayın çıkış hareketleri)
-            const currentMonth = new Date().getMonth();
-            const currentYear = new Date().getFullYear();
-
-            const monthlySalesValue = movements
-                .filter(m => {
-                    const moveDate = new Date(m.createdAt);
-                    const isOutcome = (m.moveTypeName || '').toLowerCase().includes('out') ||
-                        (m.moveTypeName || '').toLowerCase().includes('çıkış');
-                    return isOutcome &&
-                        moveDate.getMonth() === currentMonth &&
-                        moveDate.getFullYear() === currentYear;
-                })
-                .reduce((sum, m) => sum + (m.payment || 0), 0);
-
-            // Geçen ay değerleri (Yüzde hesabı için)
-            const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-            const lastYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-
-            const lastMonthSales = movements
-                .filter(m => {
-                    const moveDate = new Date(m.createdAt);
-                    const isOutcome = (m.moveTypeName || '').toLowerCase().includes('out');
-                    return isOutcome &&
-                        moveDate.getMonth() === lastMonth &&
-                        moveDate.getFullYear() === lastYear;
-                })
-                .reduce((sum, m) => sum + (m.payment || 0), 0);
-
-            // Kartları Güncelle
-            this.updateStatsCard('totalInventoryValue', totalInventoryValue, 12); // Örnek: +12%
-            this.updateStatsCard('criticalStock', criticalCount, null);
-            this.updateStatsCard('activeSuppliers', activeSuppliers, null);
-            this.updateStatsCard('monthlySales', monthlySalesValue,
-                Utils.calculatePercentage(monthlySalesValue, lastMonthSales)
-            );
-
-            console.log("✅ Dashboard istatistikleri yüklendi:", {
-                totalInventoryValue,
-                criticalCount,
-                activeSuppliers,
-                monthlySalesValue
-            });
-
-        } catch (error) {
-            console.error("❌ Dashboard İstatistikleri Hatası:", error);
-        }
+        // Kartları Güncelle
+        this.updateStatsCard('totalInventoryValue', totalInventoryValue, 12);
+        this.updateStatsCard('criticalStock', criticalCount, null);
+        this.updateStatsCard('activeSuppliers', activeSuppliers, null);
+        this.updateStatsCard('monthlySales', monthlySalesValue, Utils.calculatePercentage(monthlySalesValue, lastMonthSales));
     }
 
     /**
@@ -242,93 +223,59 @@ class Dashboard {
      */
     updateStatsCard(type, value, percentage) {
         const cards = {
-            totalInventoryValue: {
-                element: document.querySelector('.border-primary h3'),
-                formatter: Utils.formatCurrency,
-                percentElement: document.querySelector('.border-primary .text-success')
-            },
-            criticalStock: {
-                element: document.getElementById('criticalCount'),
-                formatter: (v) => v.toString(),
-                percentElement: null
-            },
-            activeSuppliers: {
-                element: document.querySelector('.border-warning h3'),
-                formatter: (v) => v.toString(),
-                percentElement: null
-            },
-            monthlySales: {
-                element: document.querySelector('.border-success h3'),
-                formatter: Utils.formatCurrency,
-                percentElement: document.querySelector('.border-success .text-success')
-            }
+            totalInventoryValue: { element: document.querySelector('.border-primary h3'), formatter: Utils.formatCurrency, percentElement: document.querySelector('.border-primary .text-success') },
+            criticalStock: { element: document.getElementById('criticalCount'), formatter: (v) => v.toString(), percentElement: null },
+            activeSuppliers: { element: document.querySelector('.border-warning h3'), formatter: (v) => v.toString(), percentElement: null },
+            monthlySales: { element: document.querySelector('.border-success h3'), formatter: Utils.formatCurrency, percentElement: document.querySelector('.border-success .text-success') }
         };
 
         const card = cards[type];
         if (!card || !card.element) return;
-
-        // Değeri güncelle
         card.element.textContent = card.formatter(value);
 
-        // Yüzde değişimini güncelle
-        if (card.percentElement && percentage !== null) {
+        if (card.percentElement && percentage !== null && isFinite(percentage)) {
             const isPositive = percentage >= 0;
             const icon = isPositive ? 'fa-arrow-up' : 'fa-arrow-down';
             const colorClass = isPositive ? 'text-success' : 'text-danger';
-
             card.percentElement.className = `small mb-0 fw-bold ${colorClass}`;
-            card.percentElement.innerHTML = `
-                <i class="fas ${icon}"></i> ${isPositive ? '+' : ''}${percentage}% geçen ay
-            `;
+            card.percentElement.innerHTML = `<i class="fas ${icon}"></i> ${isPositive ? '+' : ''}${percentage}% geçen ay`;
         }
     }
 
-    async loadInventoryStats() {
-        try {
-            const products = await Utils.fetchAPI('/Inventories');
+    /**
+     * Envanter ile ilgili Widget'ları (Kritik Stok, SKT, Kategori) işle
+     */
+    processInventoryWidgets(inventories) {
+        // Kritik stok analizi
+        const critical = inventories.filter(p => p.quantity <= p.criticalStockQuantity && p.quantity > 0);
+        this.renderCriticalTable(critical.slice(0, 5));
 
-            // Kritik stok analizi
-            const critical = products.filter(p => p.quantity <= p.criticalStockQuantity);
-            this.renderCriticalTable(critical.slice(0, 5));
+        // SKT analizi
+        const expiring = this.getExpiringProducts(inventories);
+        this.renderExpirationList(expiring.slice(0, 5));
 
-            // SKT analizi
-            const expiring = this.getExpiringProducts(products);
-            this.renderExpirationList(expiring.slice(0, 5));
-
-            // Grafikler
-            this.renderCategoryChart(products);
-            this.renderMovementChart();
-
-        } catch (error) {
-            console.error("Envanter İstatistikleri Hatası:", error);
-        }
+        // Kategori grafiği
+        this.renderCategoryChart(inventories);
     }
 
     getExpiringProducts(products, days = 30) {
         const today = new Date();
         const warningDate = new Date();
         warningDate.setDate(today.getDate() + days);
-
-        return products.filter(p => {
-            const expDate = new Date(p.expirationDate);
-            return expDate >= today && expDate <= warningDate;
-        });
+        return products
+            .filter(p => p.expirationDate)
+            .map(p => ({ ...p, expDate: new Date(p.expirationDate) }))
+            .filter(p => p.expDate >= today && p.expDate <= warningDate)
+            .sort((a,b) => a.expDate - b.expDate);
     }
 
     renderCriticalTable(items) {
         const tbody = document.getElementById('criticalStockTable');
         if (!tbody) return;
-
         if (items.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="text-center text-success py-3 small">
-                        <i class="fas fa-check-circle me-2"></i>Kritik stokta ürün yok.
-                    </td>
-                </tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-success py-3 small"><i class="fas fa-check-circle me-2"></i>Kritik stokta ürün yok.</td></tr>`;
             return;
         }
-
         tbody.innerHTML = items.map(item => `
             <tr>
                 <td class="fw-bold text-dark small">${item.productName || 'Ürün'}</td>
@@ -336,108 +283,81 @@ class Dashboard {
                 <td class="text-muted small">${item.criticalStockQuantity}</td>
                 <td><span class="badge bg-danger-subtle text-danger small">KRİTİK</span></td>
                 <td class="text-end">
-                    <button class="btn btn-sm btn-light text-primary border-0" title="Sipariş Ver">
-                        <i class="fas fa-shopping-cart"></i>
-                    </button>
+                    <button class="btn btn-sm btn-light text-primary border-0" title="Sipariş Ver"><i class="fas fa-shopping-cart"></i></button>
                 </td>
-            </tr>
-        `).join('');
+            </tr>`).join('');
     }
 
     renderExpirationList(items) {
         const list = document.getElementById('expirationList');
         if (!list) return;
-
         if (items.length === 0) {
             list.innerHTML = '<div class="text-center small text-muted py-3">Yaklaşan SKT yok.</div>';
             return;
         }
-
         list.innerHTML = items.map(item => {
-            const expDate = new Date(item.expirationDate);
-            const daysLeft = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
+            const daysLeft = Math.ceil((new Date(item.expirationDate) - new Date()) / (1000 * 60 * 60 * 24));
             const colorClass = daysLeft < 7 ? "text-danger" : "text-warning";
-
             return `
                 <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                     <div>
                         <h6 class="mb-0 small fw-bold text-dark">${item.productName}</h6>
-                        <small class="${colorClass} fw-bold" style="font-size: 0.7rem;">
-                            <i class="fas fa-clock me-1"></i>${daysLeft} Gün Kaldı
-                        </small>
+                        <small class="${colorClass} fw-bold" style="font-size: 0.7rem;"><i class="fas fa-clock me-1"></i>${daysLeft} Gün Kaldı</small>
                     </div>
                     <span class="badge bg-light text-secondary border">${Utils.formatDate(item.expirationDate)}</span>
-                </div>
-            `;
+                </div>`;
         }).join('');
     }
 
-    async loadRecentActivity() {
+    /**
+     * Son Aktiviteler Widget'ını işle
+     */
+    processRecentActivity(movements) {
         const container = document.getElementById('recentActivityList');
         if (!container) return;
-
-        try {
-            const movements = await Utils.fetchAPI('/StockMovements');
-
-            if (!movements || movements.length === 0) {
-                container.innerHTML = '<div class="text-center small text-muted py-3">Henüz hareket yok.</div>';
-                return;
-            }
-
-            container.innerHTML = movements.slice(0, 5).map(item => {
-                const isIncome = (item.moveTypeName || '').toLowerCase().includes('in') ||
-                    (item.moveTypeName || '').toLowerCase().includes('giriş');
-                const iconClass = isIncome ? 'fa-arrow-down text-success' : 'fa-arrow-up text-danger';
-                const bgClass = isIncome ? 'bg-success-subtle' : 'bg-danger-subtle';
-
-                const today = new Date().toLocaleDateString('tr-TR');
-                const itemDate = new Date(item.createdAt).toLocaleDateString('tr-TR');
-                const displayDate = itemDate === today ? "Bugün" : itemDate;
-
-                return `
-                    <div class="d-flex align-items-center mb-3 border-bottom pb-2">
-                        <div class="${bgClass} rounded-circle d-flex align-items-center justify-content-center me-3" 
-                             style="width: 40px; height: 40px;">
-                            <i class="fas ${iconClass}"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <h6 class="mb-0 small fw-bold text-dark">${item.productName || 'Ürün'}</h6>
-                            <small class="text-muted" style="font-size: 0.75rem;">
-                                <i class="fas fa-user me-1"></i>${item.userName || 'Sistem'} • <strong>${item.quantity} Adet</strong>
-                            </small>
-                        </div>
-                        <div class="text-end">
-                            <small class="text-muted fw-bold" style="font-size: 0.7rem;">${displayDate}</small>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-        } catch (error) {
-            console.error("Aktivite Yükleme Hatası:", error);
-            container.innerHTML = '<small class="text-danger">Veri yüklenemedi.</small>';
+        if (!movements || movements.length === 0) {
+            container.innerHTML = '<div class="text-center small text-muted py-3">Henüz hareket yok.</div>';
+            return;
         }
+        // En son hareketleri göstermek için sırala (en yeni en üstte)
+        const sortedMovements = movements.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        container.innerHTML = sortedMovements.slice(0, 5).map(item => {
+            const isIncome = (item.moveTypeName || '').toLowerCase().includes('in') || (item.moveTypeName || '').toLowerCase().includes('giriş');
+            const iconClass = isIncome ? 'fa-arrow-down text-success' : 'fa-arrow-up text-danger';
+            const bgClass = isIncome ? 'bg-success-subtle' : 'bg-danger-subtle';
+            const displayDate = new Date(item.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
+            return `
+                <div class="d-flex align-items-center mb-3 border-bottom pb-2">
+                    <div class="${bgClass} rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="fas ${iconClass}"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-0 small fw-bold text-dark">${item.productName || 'Ürün'}</h6>
+                        <small class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-user me-1"></i>${item.userName || 'Sistem'} • <strong>${item.quantity} Adet</strong></small>
+                    </div>
+                    <div class="text-end">
+                        <small class="text-muted fw-bold" style="font-size: 0.7rem;">${displayDate}</small>
+                    </div>
+                </div>`;
+        }).join('');
     }
 
     renderCategoryChart(products) {
         const ctx = document.getElementById('categoryChart');
         if (!ctx) return;
-
         const categories = products.reduce((acc, p) => {
             const cat = p.categoryName || 'Diğer';
-            acc[cat] = (acc[cat] || 0) + 1;
+            acc[cat] = (acc[cat] || 0) + p.quantity; // Adet bazlı gösterim
             return acc;
         }, {});
-
         if (this.charts.category) this.charts.category.destroy();
-
         this.charts.category = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: Object.keys(categories),
                 datasets: [{
                     data: Object.values(categories),
-                    backgroundColor: ['#0d6efd', '#6610f2', '#198754', '#ffc107', '#dc3545', '#0dcaf0'],
+                    backgroundColor: ['#0d6efd', '#6f42c1', '#198754', '#ffc107', '#dc3545', '#0dcaf0', '#fd7e14', '#20c997'],
                     borderWidth: 2,
                     borderColor: '#ffffff'
                 }]
@@ -445,45 +365,52 @@ class Dashboard {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { usePointStyle: true, boxWidth: 8, font: { size: 10 } }
-                    }
-                },
+                plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, font: { size: 10 } } } },
                 cutout: '75%'
             }
         });
     }
 
-    renderMovementChart() {
+    renderMovementChart(movements) {
         const ctx = document.getElementById('myChart');
         if (!ctx) return;
 
-        if (this.charts.movement) this.charts.movement.destroy();
+        const monthlyData = { in: Array(12).fill(0), out: Array(12).fill(0) };
+        const currentYear = new Date().getFullYear();
 
+        movements.forEach(m => {
+            const moveDate = new Date(m.createdAt);
+            if (moveDate.getFullYear() === currentYear) {
+                const month = moveDate.getMonth();
+                const isIncome = (m.moveTypeName || '').toLowerCase().includes('in') || (m.moveTypeName || '').toLowerCase().includes('giriş');
+                // Adet bazlı sayım yapıyoruz
+                if (isIncome) {
+                    monthlyData.in[month] += m.quantity;
+                } else {
+                    monthlyData.out[month] += m.quantity;
+                }
+            }
+        });
+
+        if (this.charts.movement) this.charts.movement.destroy();
         this.charts.movement = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'],
                 datasets: [
                     {
-                        label: 'Giriş',
-                        data: [12, 19, 3, 5, 2, 3, 15, 10, 20, 15, 25, 30],
-                        borderColor: '#0d6efd',
-                        backgroundColor: 'rgba(13, 110, 253, 0.05)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4
+                        label: 'Giriş (Adet)',
+                        data: monthlyData.in,
+                        borderColor: '#198754',
+                        backgroundColor: 'rgba(25, 135, 84, 0.05)',
+                        borderWidth: 2, fill: true, tension: 0.4
                     },
                     {
-                        label: 'Çıkış',
-                        data: [5, 10, 15, 10, 20, 15, 10, 5, 15, 10, 20, 25],
+                        label: 'Çıkış (Adet)',
+                        data: monthlyData.out,
                         borderColor: '#dc3545',
                         backgroundColor: 'rgba(220, 53, 69, 0.05)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4
+                        borderWidth: 2, fill: true, tension: 0.4
                     }
                 ]
             },
@@ -491,10 +418,7 @@ class Dashboard {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: true, position: 'top', align: 'end' } },
-                scales: {
-                    y: { beginAtZero: true, grid: { borderDash: [5, 5] } },
-                    x: { grid: { display: false } }
-                }
+                scales: { y: { beginAtZero: true, grid: { borderDash: [5, 5] } }, x: { grid: { display: false } } }
             }
         });
     }

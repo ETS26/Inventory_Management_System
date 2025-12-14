@@ -16,5 +16,6 @@ namespace Inventory_Management.Application.Features.Commands.InventoriesCommand
         public DateTime ExpirationDate { get; set; }
         public string? Description { get; set; }
         public bool IsActive { get; set; }
+        public DateTime UpdatedAt { get; set; }
     }
 }

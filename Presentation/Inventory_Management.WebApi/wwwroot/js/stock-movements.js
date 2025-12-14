@@ -48,7 +48,7 @@
         `;
 
         try {
-            const response = await fetch('/api/StockMovements', {
+            const response = await fetch('/api/StockMovements?IsActive=true', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,

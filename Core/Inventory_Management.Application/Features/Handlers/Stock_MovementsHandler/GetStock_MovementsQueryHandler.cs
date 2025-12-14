@@ -22,10 +22,17 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
 
         public async Task<List<GetStock_MovementsQueryResult>> Handle(GetStock_MovementsQuery request, CancellationToken cancellationToken)
         {
+            var query = _context.Stock_Movements.AsNoTracking();
+
+            // Eğer IsActive filtresi request içinde belirtilmişse, sorguya Where koşulu ekle
+            if (request.IsActive.HasValue)
+            {
+                query = query.Where(x => x.IsActive == request.IsActive.Value);
+            }
+
             // 1. ADIM: Veritabanından Ham Veriyi Çek (Sadece Entity Listesi)
             // Burada Select veya hesaplama YAPMIYORUZ. Sadece veriyi alıyoruz.
-            var movements = await _context.Stock_Movements
-                .AsNoTracking()
+            var movements = await query
                 .Include(x => x.Inventory).ThenInclude(i => i.Product)
                 .Include(x => x.MoveType)
                 .Include(x => x.User)
@@ -44,28 +51,32 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
                 float unitPrice = 0;
                 string typeName = (item.MoveType?.MoveType ?? "").ToLower();
 
+                // Stok aktif değilse bile fiyat göstermeye çalış
+                var inventoryItem = item.Inventory;
+
                 if (typeName.Contains("stock in") || typeName.Contains("giriş") || typeName.Contains("in"))
                 {
-                    unitPrice = item.Inventory?.PurchasePrice ?? 0;
+                    unitPrice = inventoryItem?.PurchasePrice ?? 0;
                 }
                 else
                 {
-                    unitPrice = item.Inventory?.SalePrice ?? 0;
+                    unitPrice = inventoryItem?.SalePrice ?? 0;
                 }
 
                 // Listeye Ekle (DTO Oluştur)
                 resultList.Add(new GetStock_MovementsQueryResult
                 {
                     Id = item.Id,
+                    IsActive = item.IsActive, // IsActive durumunu DTO'ya ekle
                     CreatedAt = item.CreatedAt,
 
                     // İsimleri Al (Nesneyi DEĞİL!)
-                    ProductName = item.Inventory?.Product?.ProductName ?? "Silinmiş Ürün",
+                    ProductName = inventoryItem?.Product?.ProductName ?? "Silinmiş Ürün",
                     MoveTypeName = item.MoveType?.MoveType ?? "-",
                     UserName = item.User != null ? $"{item.User.FirstName} {item.User.LastName}" : "Bilinmiyor",
                     SupplierName = item.Supplier?.SupplierName ?? "-",
-                    BatchNumber = item.Inventory?.BatchNumber,
-                    ExpirationDate = item.Inventory.ExpirationDate,
+                    BatchNumber = inventoryItem?.BatchNumber,
+                    ExpirationDate = inventoryItem.ExpirationDate,
                     Quantity = item.Quantity,
                     Description = item.Description ?? "",
                     Payment = item.Quantity * unitPrice

@@ -292,7 +292,7 @@
             // interval>1 ise (string olarak) daysOfMonth içinde olabilir.
             const days = props.daysOfWeek || props.daysOfMonth || [];
             const daysArr = (typeof days === 'string') ? days.split(',') : days;
-            
+
             if (Array.isArray(daysArr)) {
                 daysArr.forEach(d => {
                     // d bir sayı (interval=1) veya string (interval>1) olabilir.

@@ -115,14 +115,14 @@ namespace Inventory_Management.Application.Features.Handlers.SuppliersHandler
                                                     {
                                                         var fullDateTime = eventDate.Add(rule.ArrivalTime);
                     
-                                                                                            result.Add(new GetSuppliersCalenderQueryResult
-                                                                                            {
-                                                                                                Id = rule.Id,
-                                                                                                Title = rule.RuleName,
-                                                                                                CalendarColor = rule.CalendarColor ?? "#3788d8",
+                                                          result.Add(new GetSuppliersCalenderQueryResult
+                                                          {
+                                                            Id = rule.Id,
+                                                            Title = rule.RuleName,
+                                                            CalendarColor = rule.CalendarColor ?? "#3788d8",
                                                         
-                                                                                                // ✅ KESİN ÇÖZÜM: FullCalendar tekrar etmesin diye Array'i NULL yapıyoruz
-                                                                                                DaysOfWeek = null,                    
+                                                            // ✅ KESİN ÇÖZÜM: FullCalendar tekrar etmesin diye Array'i NULL yapıyoruz
+                                                            DaysOfWeek = null,                    
                                                             // ✅ HİLE: Edit modalı için günleri buraya string olarak saklıyoruz
                                                             // Frontend'de "DaysOfMonth" alanına bakıp checkboxları yakacağız
                                                             DaysOfMonth = rule.DaysOfWeek, 

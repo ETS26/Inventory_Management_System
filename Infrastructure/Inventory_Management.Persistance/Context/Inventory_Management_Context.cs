@@ -65,6 +65,8 @@ namespace Inventory_Management.Persistance.Context
                 _currentUserService.CompanyId == null ||
                 ur.CompanyId == _currentUserService.CompanyId);
 
+            modelBuilder.Entity<Inventories>().HasQueryFilter(x => x.IsActive);
+
             base.OnModelCreating(modelBuilder);
 
             // --- OTOMATİK FİLTRELEME MANTIĞI ---
@@ -98,19 +100,31 @@ namespace Inventory_Management.Persistance.Context
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            // Eğer kullanıcı giriş yapmışsa
-            if (_currentUserService.CompanyId.HasValue)
+            foreach (var entry in ChangeTracker.Entries<BaseEntity>())
             {
-                // Yeni eklenen kayıtları bul
-                foreach (var entry in ChangeTracker.Entries<IHasCompany>())
+                switch (entry.State)
                 {
-                    if (entry.State == EntityState.Added)
-                    {
-                        // Şirket ID'sini otomatik bas
-                        entry.Entity.CompanyId = _currentUserService.CompanyId.Value;
-                    }
+                    case EntityState.Added:
+                        entry.Entity.CreatedAt = DateTime.UtcNow;
+                        // IsActive, BaseEntity'de varsayılan olarak true ayarlandığı için burada tekrar ayarlamaya gerek yok.
+
+                        // Eğer varlık aynı zamanda IHasCompany arayüzünü uyguluyorsa ve kullanıcı oturum açmışsa, CompanyId'yi ayarla.
+                        if (entry.Entity is IHasCompany hasCompanyEntity && _currentUserService.CompanyId.HasValue)
+                        {
+                            // Yeni eklenen kaydın CompanyId'si boşsa, mevcut kullanıcınınkiyle doldur.
+                            if (hasCompanyEntity.CompanyId == Guid.Empty)
+                            {
+                                hasCompanyEntity.CompanyId = _currentUserService.CompanyId.Value;
+                            }
+                        }
+                        break;
+
+                    case EntityState.Modified:
+                        entry.Entity.UpdatedAt = DateTime.UtcNow;
+                        break;
                 }
             }
+
             return base.SaveChangesAsync(cancellationToken);
         }
     }

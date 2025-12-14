@@ -11,5 +11,6 @@ namespace Inventory_Management.Application.Features.Commands.InventoriesCommand
         }
 
         public Guid Id { get; set; }
+
     }
 }

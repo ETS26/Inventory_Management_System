@@ -51,7 +51,8 @@ namespace Inventory_Management.Application.Features.Handlers.InventoriesHandler
                     ? x.Product.UnitType.UnitName
                     : "-",
 
-                CompanyName = x.Company != null ? x.Company.CompanyName : "-"
+                CompanyName = x.Company != null ? x.Company.CompanyName : "-",
+                IsActive = x.IsActive
 
             }).ToList();
         }

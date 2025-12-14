@@ -7,6 +7,7 @@ namespace Inventory_Management.Application.Features.Commands.Delivery_RulesComma
     public class UpdateDelivery_RulesCommand : IRequest
     {
         public Guid Id { get; set; }
+        public Guid CompanyId { get; set; }
         public Guid SupplierId { get; set; }
         public string RuleName { get; set; }
         public DateTime StartDate { get; set; }
