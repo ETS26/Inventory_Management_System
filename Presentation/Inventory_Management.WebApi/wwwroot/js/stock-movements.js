@@ -14,7 +14,7 @@
             return;
         }
 
-        // Menü Toggle (Eğer script.js yüklenmediyse yedek olarak)
+        // Menü Toggle
         const toggleButton = document.getElementById("menu-toggle");
         if (toggleButton) {
             toggleButton.addEventListener('click', () => {
@@ -31,7 +31,7 @@
     });
 
     // ==========================================
-    // 2. STOK HAREKETLERİNİ YÜKLE (YENİ YAPINIZ)
+    // 2. STOK HAREKETLERİNİ YÜKLE
     // ==========================================
     async function loadStockMovements() {
         const container = document.getElementById('movementsContainer');
@@ -104,16 +104,15 @@
     }
 
     // ==========================================
-    // 3. HAREKET KARTINI OLUŞTUR (TUTAR EKLENDİ)
+    // 3. HAREKET KARTINI OLUŞTUR (GÜNCELLENDİ: Birim Türü Eklendi)
     // ==========================================
     function createMovementCard(m) {
         // --- Tarih Formatı ---
         const dateObj = new Date(m.createdAt);
-        const date = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-        const time = dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        const date = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Istanbul' });
+        const time = dateObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' });
 
-        // --- Tutar (Payment) Formatlama (YENİ) ---
-        // Backend'den gelen m.payment değerini para birimine çeviriyoruz
+        // --- Tutar (Payment) Formatlama ---
         const payment = m.payment || 0;
         const formattedPayment = payment.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -129,6 +128,10 @@
 
         const batchNo = m.batchNumber ? `<span class="font-monospace fw-bold text-dark small">${m.batchNumber}</span>` : `<span class="text-muted small">Yok</span>`;
 
+        // --- BİRİM TÜRÜ BİLGİSİ (YENİ) ---
+        // Backend'den 'unitTypeName' olarak gelmesini bekliyoruz. Gelmezse '-' yazar.
+        const unitType = m.unitTypeName || '-';
+
         // --- Renk ve İkon Mantığı ---
         const moveName = (m.moveTypeName || "").toLowerCase();
         const isIncome = moveName.includes('income') || moveName.includes('giriş') || moveName.includes('in') || moveName.includes('stock in');
@@ -139,7 +142,6 @@
         const amountColor = isIncome ? 'text-success' : 'text-danger';
         const amountPrefix = isIncome ? '+' : '-';
 
-        // Veri Kontrolleri
         const productName = m.productName || 'Bilinmeyen Ürün';
         const userName = m.userName || 'Sistem';
         const userInitial = userName.charAt(0).toUpperCase();
@@ -162,7 +164,6 @@
                     </div>
                     <div class="text-end ms-2 flex-shrink-0">
                         <h4 class="fw-bold mb-0 ${amountColor}">${amountPrefix}${m.quantity}</h4>
-                        <small class="text-muted d-block" style="font-size: 0.7rem;">Adet</small>
                         
                         <div class="mt-1 px-2 py-1 bg-light rounded border border-light-subtle">
                             <span class="fw-bold text-dark small">₺${formattedPayment}</span>
@@ -171,6 +172,11 @@
                 </div>
 
                 <div class="bg-light rounded p-2 mb-3 mt-2 border border-1">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">Birim:</small>
+                        <span class="fw-bold text-dark small">${unitType}</span>
+                    </div>
+                    
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <small class="text-muted">Seri No:</small>
                         ${batchNo}
@@ -209,7 +215,6 @@
         if (!inventorySelect || !moveTypeSelect) return;
 
         try {
-            // Paralel istekler
             const [invRes, prodRes, typeRes, supRes] = await Promise.all([
                 fetch('/api/Inventories', { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch('/api/Products', { headers: { 'Authorization': `Bearer ${token}` } }),
@@ -217,14 +222,11 @@
                 fetch('/api/Suppliers', { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
 
-            // Envanter ve Ürünler (Hafızaya al)
             if (invRes.ok) allInventories = await invRes.json();
             if (prodRes.ok) allProducts = await prodRes.json();
 
-            // Başlangıçta Envanter listesini doldur
             fillDropdown(allInventories, 'inventory');
 
-            // Hareket Tipleri
             if (typeRes.ok) {
                 const types = await typeRes.json();
                 moveTypeSelect.innerHTML = '<option value="" selected disabled>Seçiniz...</option>';
@@ -236,7 +238,6 @@
                 });
             }
 
-            // Tedarikçiler
             if (supRes.ok && supplierSelect) {
                 const suppliers = await supRes.json();
                 supplierSelect.innerHTML = '<option value="">Tedarikçi Seçiniz</option>';
@@ -253,7 +254,6 @@
         }
     }
 
-    // Helper: Dropdown Doldur
     function fillDropdown(data, mode) {
         const select = document.getElementById('inventorySelect');
         if (!select) return;
@@ -283,10 +283,9 @@
     }
 
     // ==========================================
-    // 5. GLOBAL FONKSİYONLAR (HTML'den erişim için)
+    // 5. GLOBAL FONKSİYONLAR
     // ==========================================
 
-    // Mod Değiştirme (Yeni Kart / Mevcut Stok)
     window.selectMode = function (mode) {
         const cardExisting = document.getElementById('cardExisting');
         const cardNew = document.getElementById('cardNew');
@@ -313,7 +312,6 @@
         }
     };
 
-    // Renk Güncelleme
     window.updateColor = function () {
         const select = document.getElementById('moveTypeSelect');
         const input = document.getElementById('quantityInput');
@@ -328,7 +326,6 @@
         }
     };
 
-    // Kaydetme Fonksiyonu
     window.saveStockMovement = async function () {
         const inventorySelect = document.getElementById('inventorySelect');
         const moveTypeSelect = document.getElementById('moveTypeSelect');
@@ -400,8 +397,6 @@
                 const modal = bootstrap.Modal.getInstance(modalEl);
                 if (modal) modal.hide();
                 document.getElementById('movementForm').reset();
-
-                // Listeyi yenile
                 await loadStockMovements();
             } else {
                 throw new Error(result.errorMessage || result.title || 'İşlem başarısız');

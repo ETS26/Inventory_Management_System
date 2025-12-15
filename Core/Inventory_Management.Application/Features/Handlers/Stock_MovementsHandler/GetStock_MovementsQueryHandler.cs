@@ -33,7 +33,7 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
             // 1. ADIM: Veritabanından Ham Veriyi Çek (Sadece Entity Listesi)
             // Burada Select veya hesaplama YAPMIYORUZ. Sadece veriyi alıyoruz.
             var movements = await query
-                .Include(x => x.Inventory).ThenInclude(i => i.Product)
+                .Include(x => x.Inventory).ThenInclude(i => i.Product).ThenInclude(p => p.UnitType)
                 .Include(x => x.MoveType)
                 .Include(x => x.User)
                 .Include(x => x.Supplier)
@@ -73,6 +73,7 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
                     // İsimleri Al (Nesneyi DEĞİL!)
                     ProductName = inventoryItem?.Product?.ProductName ?? "Silinmiş Ürün",
                     MoveTypeName = item.MoveType?.MoveType ?? "-",
+                    UnitTypeName = inventoryItem?.Product?.UnitType?.UnitName ?? "-",
                     UserName = item.User != null ? $"{item.User.FirstName} {item.User.LastName}" : "Bilinmiyor",
                     SupplierName = item.Supplier?.SupplierName ?? "-",
                     BatchNumber = inventoryItem?.BatchNumber,

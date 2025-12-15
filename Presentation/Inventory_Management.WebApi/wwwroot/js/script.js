@@ -147,20 +147,22 @@ class Dashboard {
         console.log("📊 Dashboard başlatılıyor...");
         try {
             // 1. Tüm verileri tek seferde, verimli bir şekilde çek
-            const [inventories, suppliers, movements] = await Promise.all([
+            const [inventories, suppliers, movements, calendarData] = await Promise.all([
                 Utils.fetchAPI('/Inventories?IsActive=true'), // Sadece aktif envanteri çek
                 Utils.fetchAPI('/Suppliers?IsActive=true'),   // Sadece aktif tedarikçileri çek
-                Utils.fetchAPI('/StockMovements')
+                Utils.fetchAPI('/StockMovements'),
+                Utils.fetchAPI('/Suppliers/calendar')      // Takvim/sipariş verilerini çek
             ]);
 
             console.log("✅ API Verileri Yüklendi", {
                 inventories: inventories.length,
                 suppliers: suppliers.length,
-                movements: movements.length
+                movements: movements.length,
+                calendar: calendarData.length
             });
 
             // 2. Verileri ilgili modüllere dağıt
-            this.processStatsCards(inventories, suppliers, movements);
+            this.processStatsCards(inventories, suppliers, movements, calendarData);
             this.processInventoryWidgets(inventories);
             this.processRecentActivity(movements);
             this.renderMovementChart(movements); // DİNAMİK GRAFİK
@@ -175,7 +177,7 @@ class Dashboard {
     /**
      * Ana İstatistik Kartlarını İşle
      */
-    processStatsCards(inventories, suppliers, movements) {
+    processStatsCards(inventories, suppliers, movements, calendarData) {
         // 1. Toplam Envanter Değeri
         const totalInventoryValue = inventories
             .filter(item => {
@@ -190,9 +192,36 @@ class Dashboard {
         // 3. Aktif Tedarikçi Sayısı (Veri zaten filtrelenmiş geldi)
         const activeSuppliers = suppliers.length;
 
-        // 4. Aylık Satış Tutarı (Bu ayın çıkış hareketleri)
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
+        // Date objects for filtering
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Günün başlangıcı
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        // 4. Günlük Satış
+        const dailySalesValue = movements
+            .filter(m => {
+                const moveDate = new Date(m.createdAt);
+                const isOutcome = (m.moveTypeName || '').toLowerCase().includes('out') || (m.moveTypeName || '').toLowerCase().includes('çıkış');
+                return isOutcome && moveDate >= today && moveDate < tomorrow;
+            })
+            .reduce((sum, m) => sum + (m.payment || 0), 0);
+
+        // 5. Haftalık Beklenen Siparişler
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(startOfWeek.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); // Monday
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(endOfWeek.getDate() + 7);
+
+        const weeklyExpectedOrders = calendarData.filter(event => {
+            if (!event.start) return false;
+            const eventDate = new Date(event.start);
+            return eventDate >= startOfWeek && eventDate < endOfWeek;
+        }).length;
+
+        // 6. Aylık Satış
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
         const monthlySalesValue = movements
             .filter(m => {
                 const moveDate = new Date(m.createdAt);
@@ -216,6 +245,8 @@ class Dashboard {
         this.updateStatsCard('criticalStock', criticalCount, null);
         this.updateStatsCard('activeSuppliers', activeSuppliers, null);
         this.updateStatsCard('monthlySales', monthlySalesValue, Utils.calculatePercentage(monthlySalesValue, lastMonthSales));
+        this.updateStatsCard('dailySales', dailySalesValue, null); // Yüzdelik şimdilik null
+        this.updateStatsCard('weeklyOrders', weeklyExpectedOrders, null);
     }
 
     /**
@@ -226,7 +257,9 @@ class Dashboard {
             totalInventoryValue: { element: document.querySelector('.border-primary h3'), formatter: Utils.formatCurrency, percentElement: document.querySelector('.border-primary .text-success') },
             criticalStock: { element: document.getElementById('criticalCount'), formatter: (v) => v.toString(), percentElement: null },
             activeSuppliers: { element: document.querySelector('.border-warning h3'), formatter: (v) => v.toString(), percentElement: null },
-            monthlySales: { element: document.querySelector('.border-success h3'), formatter: Utils.formatCurrency, percentElement: document.querySelector('.border-success .text-success') }
+            monthlySales: { element: document.querySelector('.border-success h3'), formatter: Utils.formatCurrency, percentElement: document.querySelector('.border-success .text-success') },
+            dailySales: { element: document.getElementById('dailySales'), formatter: Utils.formatCurrency, percentElement: document.querySelector('.border-info .small') }, // TODO: Yüzde eklenebilir
+            weeklyOrders: { element: document.getElementById('weeklyExpectedOrders'), formatter: (v) => v.toString(), percentElement: null }
         };
 
         const card = cards[type];

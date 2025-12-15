@@ -9,6 +9,7 @@ namespace Inventory_Management.Application.Features.Results.Stock_MovementsResul
         // --- Görüntülenecek İsimler (DTO Mantığı) ---
         public string ProductName { get; set; }      // Hangi Ürün?
         public string MoveTypeName { get; set; }     // Giriş mi Çıkış mı?
+        public string UnitTypeName { get; set; }    // Birim (Adet, Kg, etc.)
         public string UserName { get; set; }         // Kim yaptı?
         public string SupplierName { get; set; }     // Hangi Tedarikçi? (Varsa)
         public string? BatchNumber { get; set; }       // Parti Numarası

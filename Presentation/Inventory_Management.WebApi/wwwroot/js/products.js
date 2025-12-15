@@ -95,8 +95,8 @@
                     </div>
                     
                     <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
-                        <small class="text-muted fw-bold">
-                            <i class="fas fa-ruler-combined me-1"></i>${unit}
+                        <small class="text-muted small text-truncate" style="max-width: 60%;" title="${p.description || ''}">
+                            <i class="fas fa-info-circle me-1"></i>${p.description || 'Açıklama mevcut değil.'}
                         </small>
                         
                         <div class="btn-group">
