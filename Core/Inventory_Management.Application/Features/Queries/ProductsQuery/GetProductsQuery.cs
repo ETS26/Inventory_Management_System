@@ -7,5 +7,6 @@ namespace Inventory_Management.Application.Features.Queries.ProductsQuery
 {
     public class GetProductsQuery : IRequest<List<GetProductsQueryResult>>
     {
+        public bool? IsActive { get; set; }
     }
 }

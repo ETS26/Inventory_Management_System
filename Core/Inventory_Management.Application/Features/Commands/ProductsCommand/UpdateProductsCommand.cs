@@ -6,7 +6,6 @@ namespace Inventory_Management.Application.Features.Commands.ProductsCommand
     public class UpdateProductsCommand : IRequest
     {
         public Guid Id { get; set; }
-        public Guid CompanyId { get; set; }
         public Guid CategoryId { get; set; }
         public Guid UnitTypeId { get; set; }
         public string Barcode { get; set; }

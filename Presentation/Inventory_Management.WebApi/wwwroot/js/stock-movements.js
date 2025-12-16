@@ -217,7 +217,7 @@
         try {
             const [invRes, prodRes, typeRes, supRes] = await Promise.all([
                 fetch('/api/Inventories', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/api/Products', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch('/api/Products?IsActive=true', { headers: { 'Authorization': `Bearer ${token}` } }), // Filter for active products
                 fetch('/api/MoveTypes', { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch('/api/Suppliers', { headers: { 'Authorization': `Bearer ${token}` } })
             ]);

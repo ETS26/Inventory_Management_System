@@ -19,9 +19,9 @@ namespace Inventory_Management.WebApi.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> ProductsList()
+        public async Task<IActionResult> ProductsList([FromQuery] bool? isActive)
         {
-            var val = await _mediator.Send(new GetProductsQuery());
+            var val = await _mediator.Send(new GetProductsQuery { IsActive = isActive });
             return Ok(val);
         }
 
@@ -32,7 +32,14 @@ namespace Inventory_Management.WebApi.Controllers
             return Ok("Ürün ekleme başarılı");
         }
 
-        [HttpDelete]
+        [HttpPut("activate/{id}")]
+        public async Task<IActionResult> ActivateProduct(Guid id)
+        {
+            await _mediator.Send(new ActivateProductCommand(id));
+            return Ok("Ürün başarıyla aktif edildi.");
+        }
+
+        [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProducts(Guid id)
         {
             await _mediator.Send(new DeleteProductsCommand(id));
@@ -46,9 +53,13 @@ namespace Inventory_Management.WebApi.Controllers
             return Ok(val);
         }
 
-        [HttpPut]
-        public async Task<IActionResult> UpdateProducts(UpdateProductsCommand command)
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateProducts(Guid id, UpdateProductsCommand command)
         {
+            if (id != command.Id)
+            {
+                return BadRequest("ID mismatch");
+            }
             await _mediator.Send(command);
             return Ok("Ürün güncelleme başarılı");
         }

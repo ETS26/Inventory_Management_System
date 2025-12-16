@@ -1,41 +1,32 @@
-using MediatR;
+using Inventory_Management.Application.Features.Commands.ProductsCommand;
+using Inventory_Management.Domain.Common;
+using Inventory_Management.Application.Features.Exceptions;
 using Inventory_Management.Persistance.Context;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
 using System.Threading;
 using System.Threading.Tasks;
-using Inventory_Management.Domain.Entities;
-using Inventory_Management.Application.Features.Commands.ProductsCommand;
-using Microsoft.EntityFrameworkCore;
-using Inventory_Management.Application.Features.Exceptions;
-using Inventory_Management.Domain.Common;
+using System;
 
 namespace Inventory_Management.Application.Features.Handlers.ProductsHandler
 {
-    public class DeleteProductsCommandHandler : IRequestHandler<DeleteProductsCommand>
+    public class ActivateProductCommandHandler : IRequestHandler<ActivateProductCommand>
     {
         private readonly Inventory_Management_Context _context;
         private readonly ICurrentUserService _currentUserService;
 
-
-        public DeleteProductsCommandHandler(Inventory_Management_Context context, ICurrentUserService currentUserService)
+        public ActivateProductCommandHandler(Inventory_Management_Context context, ICurrentUserService currentUserService)
         {
             _context = context;
             _currentUserService = currentUserService;
         }
 
-        public async Task Handle(DeleteProductsCommand request, CancellationToken cancellationToken)
+        public async Task Handle(ActivateProductCommand request, CancellationToken cancellationToken)
         {
             var companyId = _currentUserService.CompanyId;
             if (companyId == null)
             {
                 throw new BadRequestException("User is not associated with a company.");
-            }
-
-            var inventoryExists = await _context.Inventories
-                .AnyAsync(i => i.ProductId == request.Id && i.CompanyId == companyId, cancellationToken);
-
-            if (inventoryExists)
-            {
-                throw new BadRequestException("Envanter olan ürün silinemez.");
             }
 
             var product = await _context.Products
@@ -46,7 +37,7 @@ namespace Inventory_Management.Application.Features.Handlers.ProductsHandler
                 throw new NotFoundException("Product not found.");
             }
 
-            product.IsActive = false;
+            product.IsActive = true;
             await _context.SaveChangesAsync(cancellationToken);
         }
     }

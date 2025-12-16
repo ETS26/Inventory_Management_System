@@ -4,6 +4,7 @@ using Inventory_Management.Persistance.Context;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using System.Linq; // Add this using statement
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,7 +19,14 @@ namespace Inventory_Management.Application.Features.Handlers.ProductsHandler
         }
         public async Task<List<GetProductsQueryResult>> Handle(GetProductsQuery request, CancellationToken cancellationToken)
         {
-            var val = await _context.Products.ToListAsync();
+            var query = _context.Products.AsQueryable();
+
+            if (request.IsActive.HasValue)
+            {
+                query = query.Where(x => x.IsActive == request.IsActive.Value);
+            }
+
+            var val = await query.ToListAsync(cancellationToken);
             return val.Select(x => new GetProductsQueryResult
             {
                 Id = x.Id,

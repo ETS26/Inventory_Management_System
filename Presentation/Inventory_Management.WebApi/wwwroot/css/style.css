@@ -539,3 +539,14 @@ h1, h2, h3, h4, h5, h6 {
 .border-start-custom {
     border-left: 4px solid var(--main-bg-color) !important;
 }
+
+/* Styles for inactive products */
+.product-inactive {
+    opacity: 0.6;
+    background-color: #f8f9fa;
+}
+
+.product-inactive .card-hover:hover {
+    transform: none;
+    box-shadow: none;
+}
