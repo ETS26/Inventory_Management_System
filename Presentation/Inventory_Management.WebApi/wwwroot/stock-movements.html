@@ -153,7 +153,7 @@
                         </div>
                     </div>
                     <div class="col-md-5 text-end">
-                        <button class="btn btn-outline-secondary me-2">
+                        <button class="btn btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#filterMovementModal">
                             <i class="fas fa-filter me-1"></i> Filtrele
                         </button>
                         <button class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addMovementModal">
@@ -265,7 +265,7 @@
                             <div class="col-md-6">
                                 <label class="form-label">Miktar</label>
                                 <div class="input-group">
-                                    <input type="number" class="form-control fw-bold" id="quantityInput" min="1" placeholder="0" required>
+                                    <input type="number" class="form-control fw-bold" id="quantityInput" min="1" placeholder="0" required oninput="updateColor()">
                                     <span class="input-group-text">Adet</span>
                                 </div>
                             </div>
@@ -285,6 +285,154 @@
                     <button type="button" class="btn btn-light text-muted rounded-pill px-4" data-bs-dismiss="modal">İptal</button>
                     <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm ps-4 pe-4" onclick="saveStockMovement()">
                         <i class="fas fa-save me-2"></i>İşlemi Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Update Movement Modal -->
+    <div class="modal fade" id="updateMovementModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark">Stok Hareketini Güncelle</h5>
+                        <p class="text-muted small mb-0">Harekete ait bilgileri güncelleyebilirsiniz.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="updateMovementForm">
+                        <input type="hidden" id="updateMovementId">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">ENVANTERDEKİ ÜRÜN</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-box"></i></span>
+                                    <select class="form-select" id="updateInventorySelect" required></select>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">TEDARİKÇİ</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-truck"></i></span>
+                                    <select class="form-select" id="updateSupplierSelect" required></select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">İŞLEM TİPİ</label>
+                                <select class="form-select" id="updateMoveTypeSelect" required></select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">MİKTAR</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control fw-bold" id="updateQuantityInput" min="1" placeholder="0" required>
+                                    <span class="input-group-text">Adet</span>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">AÇIKLAMA</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-comment-alt"></i></span>
+                                    <textarea class="form-control" id="updateDescriptionInput" rows="2" placeholder="Opsiyonel açıklama..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-0 pt-0 pe-4 pb-4">
+                    <button type="button" class="btn btn-light text-muted rounded-pill px-4" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="updateStockMovement()">
+                        <i class="fas fa-save me-2"></i>Değişiklikleri Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="filterMovementModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 pb-0 bg-light">
+                    <h5 class="modal-title fw-bold text-dark ps-2 pt-2">
+                        <i class="fas fa-filter text-primary me-2"></i>Hareket Filtrele
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 pt-3">
+                    <form id="movementFilterForm">
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label text-secondary small fw-bold">HAREKET TİPİ</label>
+                                <select class="form-select" id="filterMoveType">
+                                    <option value="">Tümü</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label text-secondary small fw-bold">İŞLEMİ YAPAN</label>
+                                <select class="form-select" id="filterUser">
+                                    <option value="">Tümü</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small fw-bold">MİKTAR ARALIĞI</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="filterQtyMin" placeholder="Min">
+                                <span class="input-group-text bg-light">-</span>
+                                <input type="number" class="form-control" id="filterQtyMax" placeholder="Max">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small fw-bold">TUTAR (TL)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control" id="filterPaymentMin" placeholder="Min">
+                                <span class="input-group-text bg-light">-</span>
+                                <input type="number" class="form-control" id="filterPaymentMax" placeholder="Max">
+                            </div>
+                        </div>
+
+                        <hr class="text-muted opacity-25">
+
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small fw-bold">İŞLEM TARİHİ</label>
+                            <div class="input-group input-group-sm">
+                                <input type="date" class="form-control" id="filterDateStart">
+                                <span class="input-group-text bg-light">-</span>
+                                <input type="date" class="form-control" id="filterDateEnd">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small fw-bold">SON KULLANMA TARİHİ</label>
+                            <div class="input-group input-group-sm">
+                                <input type="date" class="form-control" id="filterExpDateStart">
+                                <span class="input-group-text bg-light">-</span>
+                                <input type="date" class="form-control" id="filterExpDateEnd">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small fw-bold">BİRİM TİPİ</label>
+                            <select class="form-select" id="filterUnitType">
+                                <option value="">Tümü</option>
+                            </select>
+                        </div>
+
+                    </form>
+                </div>
+                <div class="modal-footer border-0 pt-0 pe-4 pb-4 bg-light">
+                    <button type="button" class="btn btn-light rounded-pill px-4" onclick="clearMovementFilters()">
+                        <i class="fas fa-eraser me-2"></i>Temizle
+                    </button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" onclick="applyMovementFilters()">
+                        <i class="fas fa-check me-2"></i>Uygula
                     </button>
                 </div>
             </div>

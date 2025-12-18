@@ -29,8 +29,15 @@ namespace Inventory_Management.WebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateStockMovements(CreateStock_MovementsCommand command)
         {
-            await _mediator.Send(command);
-            return Ok(new { isSuccess = true, message = "Stok hareketi ekleme başarılı" });
+            try {
+                await _mediator.Send(command);
+                return Ok(new { isSuccess = true, message = "Stok hareketi ekleme başarılı" });
+            }
+            catch(System.Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            
         }
 
         [HttpDelete]

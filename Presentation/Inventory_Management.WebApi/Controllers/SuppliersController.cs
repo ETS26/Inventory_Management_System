@@ -1,10 +1,10 @@
-
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using Inventory_Management.Application.Features.Queries.SuppliersQuery;
 using Inventory_Management.Application.Features.Commands.SuppliersCommand;
 using System.Threading.Tasks;
+using System;
 
 namespace Inventory_Management.WebApi.Controllers
 {
@@ -32,11 +32,18 @@ namespace Inventory_Management.WebApi.Controllers
             return Ok("Tedarikçi ekleme başarılı");
         }
 
-        [HttpDelete]
+        [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSuppliers(Guid id)
         {
             await _mediator.Send(new DeleteSuppliersCommand(id));
             return Ok("Tedarikçi silme başarılı");
+        }
+
+        [HttpPut("activate/{id}")]
+        public async Task<IActionResult> ActivateSupplier(Guid id)
+        {
+            await _mediator.Send(new ActivateSupplierCommand(id));
+            return Ok("Tedarikçi başarıyla aktif edildi.");
         }
 
         [HttpGet("GetSuppliersById")]

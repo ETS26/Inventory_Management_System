@@ -1,21 +1,40 @@
 /**
- * INVENTORY.JS - Envanter Yönetim Sayfası
+ * INVENTORY.JS - Envanter Yönetim Sayfası (Gelişmiş Filtreleme - Güncellenmiş)
  */
 
 'use strict';
+
+// Debounce (Arama performansını artırır)
+function debounce(func, delay = 300) {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            func.apply(this, args);
+        }, delay);
+    };
+}
 
 class InventoryManager {
     constructor() {
         this.token = localStorage.getItem('jwtToken');
         this.tableBody = document.getElementById('inventoryTableBody');
-        this.allData = [];
+        this.searchInput = document.getElementById('searchInput');
+
+        this.allData = [];    // Tüm ham veri (Backend'den gelen)
+        this.activeData = []; // Ekranda gösterilen filtrelenmiş veri
     }
 
     async init() {
         if (!this.tableBody) return;
+
         await this.loadInventory();
+        this.setupSearch();
     }
 
+    // ==========================================
+    // 1. VERİ YÜKLEME
+    // ==========================================
     async loadInventory() {
         this.showLoading();
 
@@ -28,34 +47,24 @@ class InventoryManager {
                 }
             });
 
-            if (!response.ok) {
-                throw new Error('Veri çekilemedi.');
-            }
+            if (!response.ok) throw new Error('Veri çekilemedi.');
 
             const data = await response.json();
-
-            // Debug için konsola bakalım (Tarayıcıda F12 -> Console sekmesinden kontrol edin)
-            if (data.length > 0) {
-                console.log("🔍 Gelen Veri Örneği:", data[0]);
-                // Düzeltme: Hem camelCase (isActive) hem de PascalCase (IsActive) kontrolü için loglar eklendi.
-                console.log("👉 isActive propertysi:", data[0].isActive);
-                console.log("👉 IsActive propertysi:", data[0].IsActive);
-            }
+            console.log('📦 Envanter Verileri:', data);
 
             this.allData = data;
 
-            // ✅ DÜZELTME: item.isActive (camelCase) kontrolü eklendi.
-            const activeData = this.allData.filter(item => {
-                // Backend'den gelen değer hangisiyse onu al (Önce IsActive, yoksa isActive)
-                const status = (item.IsActive !== undefined) ? item.IsActive : item.isActive;
-
-                // true veya 1 ise listeye ekle
-                return status === true || status === 1;
+            // 1. Adım: Sadece IsActive olanları ayıkla (Soft Delete Kontrolü)
+            this.activeData = this.allData.filter(item => {
+                const status = (item.isActive !== undefined) ? item.isActive : item.IsActive;
+                return status !== false;
             });
 
-            console.log(`✅ Toplam: ${data.length}, Ekrana Basılan: ${activeData.length}`);
+            // 2. Adım: Kategorileri Filtre Modalı için Yükle
+            this.loadCategoriesForFilter();
 
-            this.renderInventory(activeData);
+            // 3. Adım: Tabloyu Çiz
+            this.renderInventory(this.activeData);
 
         } catch (error) {
             console.error('Hata:', error);
@@ -63,17 +72,128 @@ class InventoryManager {
         }
     }
 
-    showLoading() {
-        this.tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
+    // ==========================================
+    // 2. KATEGORİLERİ FİLTRE İÇİN HAZIRLA
+    // ==========================================
+    loadCategoriesForFilter() {
+        const select = document.getElementById('filterCategory');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Tümü</option>';
+
+        // Benzersiz kategorileri bul
+        const categories = [...new Set(this.activeData.map(item => item.categoryName).filter(c => c))];
+
+        categories.sort().forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.text = cat;
+            select.appendChild(opt);
+        });
     }
 
-    showError(message) {
-        this.tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${message}</td></tr>`;
+    // ==========================================
+    // 3. GELİŞMİŞ FİLTRELEME MANTIĞI
+    // ==========================================
+    applyAdvancedFilter(filters) {
+        console.log("Filtreler Uygulanıyor:", filters);
+
+        // Her zaman en baştaki temiz veriden (ama soft-delete yapılmış halinden) başla
+        let filtered = this.allData.filter(item => {
+            const status = (item.isActive !== undefined) ? item.isActive : item.IsActive;
+            return status !== false;
+        });
+
+        // 1. Kategori Filtresi
+        if (filters.category) {
+            filtered = filtered.filter(item => item.categoryName === filters.category);
+        }
+
+        // 2. Stok Durumu Filtresi
+        if (filters.stockStatus) {
+            filtered = filtered.filter(item => {
+                if (filters.stockStatus === 'out') return item.quantity === 0;
+                if (filters.stockStatus === 'low') return item.quantity > 0 && item.quantity <= item.criticalStockQuantity;
+                if (filters.stockStatus === 'in') return item.quantity > item.criticalStockQuantity;
+                return true;
+            });
+        }
+
+        // 3. Satış Fiyatı Aralığı
+        if (filters.priceMin) {
+            filtered = filtered.filter(item => item.salePrice >= parseFloat(filters.priceMin));
+        }
+        if (filters.priceMax) {
+            filtered = filtered.filter(item => item.salePrice <= parseFloat(filters.priceMax));
+        }
+
+        // 4. Alış Fiyatı Aralığı
+        if (filters.purchasePriceMin) {
+            filtered = filtered.filter(item => item.purchasePrice >= parseFloat(filters.purchasePriceMin));
+        }
+        if (filters.purchasePriceMax) {
+            filtered = filtered.filter(item => item.purchasePrice <= parseFloat(filters.purchasePriceMax));
+        }
+
+        // 5. Son Kullanma Tarihi Aralığı
+        if (filters.expDateStart || filters.expDateEnd) {
+            filtered = filtered.filter(item => {
+                if (!item.expirationDate) return false;
+                const itemDate = new Date(item.expirationDate).setHours(0, 0, 0, 0);
+
+                let isValid = true;
+                if (filters.expDateStart) {
+                    const start = new Date(filters.expDateStart).setHours(0, 0, 0, 0);
+                    if (itemDate < start) isValid = false;
+                }
+                if (filters.expDateEnd) {
+                    const end = new Date(filters.expDateEnd).setHours(0, 0, 0, 0);
+                    if (itemDate > end) isValid = false;
+                }
+                return isValid;
+            });
+        }
+
+        // Global activeData'yı güncelle ki Arama çubuğu bu sonuçlar içinde arasın
+        this.activeData = filtered;
+        this.renderInventory(this.activeData);
     }
 
+    // ==========================================
+    // 4. ARAMA (SEARCH)
+    // ==========================================
+    setupSearch() {
+        if (!this.searchInput) return;
+
+        this.searchInput.addEventListener('keyup', debounce(() => {
+            const term = this.searchInput.value.trim().toLowerCase();
+
+            if (!term) {
+                // Arama boşsa mevcut filtrelenmiş listeyi göster
+                this.renderInventory(this.activeData);
+                return;
+            }
+
+            // Mevcut (belki de filtrelenmiş) liste üzerinde arama yap
+            const searchResults = this.activeData.filter(item => {
+                const name = (item.productName || '').toLowerCase();
+                const barcode = (item.barcode || '').toLowerCase();
+                const category = (item.categoryName || '').toLowerCase();
+                const batch = (item.batchNumber || '').toLowerCase();
+
+                return name.includes(term) || barcode.includes(term) || category.includes(term) || batch.includes(term);
+            });
+
+            this.renderInventory(searchResults);
+        }, 300));
+    }
+
+    // ==========================================
+    // 5. TABLO RENDER İŞLEMLERİ
+    // ==========================================
     renderInventory(data) {
-        if (data.length === 0) {
-            this.tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">Kayıt yok.</td></tr>`;
+        if (!data || data.length === 0) {
+            this.tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">Kayıt bulunamadı.</td></tr>`;
             return;
         }
         this.tableBody.innerHTML = data.map((item, index) => this.createTableRow(item, index + 1)).join('');
@@ -100,7 +220,7 @@ class InventoryManager {
                             <i class="fas fa-pen"></i>
                         </button>
                         <button class="btn btn-sm btn-light text-danger border-0 rounded-circle card-hover" 
-                                onclick="deleteInventoryItem('${item.id}')" title="Arşivle/Sil">
+                                onclick="deleteInventoryItem('${item.id}')" title="Sil">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -110,7 +230,7 @@ class InventoryManager {
 
     // --- Render Helpers ---
     renderProductCell(info) {
-        return `<td><div class="d-flex align-items-center"><div class="product-avatar me-3 shadow-sm">${info.initial}</div><div><h6 class="mb-0 fw-bold text-dark">${info.name}</h6><small class="text-muted">${info.category} • <span class="text-secondary">Seri: ${info.batch}</span></small></div></div></td>`;
+        return `<td><div class="d-flex align-items-center"><div class="product-avatar me-3 shadow-sm">${info.initial}</div><div><h6 class="mb-0 fw-bold text-dark">${info.name}</h6><small class="text-muted">${info.category} • <span class="text-secondary">Seri: ${info.batch}</span> • <span class="text-secondary">${info.unitType}</span></small></div></div></td>`;
     }
     renderStockCell(item, status) {
         return `<td><div class="d-flex flex-column"><span class="fw-bold text-dark">${item.quantity} <small class="text-muted">Adet</small></span><div class="progress mt-1" style="height: 4px; width: 80px;"><div class="progress-bar ${status.barColor}" style="width: ${status.percent}%"></div></div><small class="text-danger mt-1">Min: ${item.criticalStockQuantity}</small></div></td>`;
@@ -132,16 +252,58 @@ class InventoryManager {
     }
     extractProductInfo(item) {
         const name = item.productName || 'Tanımsız';
-        return { name, category: item.categoryName || '-', batch: item.batchNumber || '-', initial: name.charAt(0).toUpperCase() };
+        return { name, category: item.categoryName || '-', batch: item.batchNumber || '-', unitType: item.unitTypeName || '-', initial: name.charAt(0).toUpperCase() };
     }
+    showLoading() { this.tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`; }
+    showError(msg) { this.tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${msg}</td></tr>`; }
 }
 
 // Global Manager
 let inventoryManagerInstance;
 
 // ==========================================
-// 1. DÜZENLEME (Update)
+// GLOBAL BUTON FONKSİYONLARI
 // ==========================================
+
+// 1. Filtrele Butonu
+window.applyFilters = function () {
+    const filters = {
+        category: document.getElementById('filterCategory').value,
+        stockStatus: document.getElementById('filterStockStatus').value,
+
+        // Fiyatlar
+        priceMin: document.getElementById('filterPriceMin').value,
+        priceMax: document.getElementById('filterPriceMax').value,
+        purchasePriceMin: document.getElementById('filterPurchasePriceMin').value,
+        purchasePriceMax: document.getElementById('filterPurchasePriceMax').value,
+
+        // Tarihler (Son Kullanma Tarihi)
+        expDateStart: document.getElementById('filterExpDateStart').value,
+        expDateEnd: document.getElementById('filterExpDateEnd').value
+    };
+
+    if (inventoryManagerInstance) {
+        inventoryManagerInstance.applyAdvancedFilter(filters);
+    }
+
+    // Modalı kapat
+    const modalEl = document.getElementById('filterInventoryModal');
+    if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+};
+
+window.clearFilters = function () {
+    document.getElementById('filterForm').reset();
+    if (inventoryManagerInstance) {
+        // Filtreleri sıfırla = activeData'yı tekrar IsActive olan ham veriye eşitle
+        inventoryManagerInstance.activeData = inventoryManagerInstance.allData.filter(item => {
+            const status = (item.isActive !== undefined) ? item.isActive : item.IsActive;
+            return status !== false;
+        });
+        inventoryManagerInstance.renderInventory(inventoryManagerInstance.activeData);
+    }
+};
+
+// 2. Düzenleme
 window.editInventoryItem = function (id) {
     if (!inventoryManagerInstance) return;
     const item = inventoryManagerInstance.allData.find(d => d.id === id);
@@ -169,20 +331,15 @@ window.editInventoryItem = function (id) {
     }
 };
 
-// ==========================================
-// 2. KAYDETME (Update - PUT)
-// ==========================================
+// 3. Kaydetme
 window.saveInventoryItem = async function () {
     const id = document.getElementById('editId').value;
     const token = localStorage.getItem('jwtToken');
     const btn = document.querySelector('#editInventoryModal .btn-primary');
 
-    // Yükleniyor efekti
-    const originalText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Kaydediliyor...';
     btn.disabled = true;
 
-    // Orijinal veriyi al (Değişmeyen alanları korumak için)
     const originalItem = inventoryManagerInstance.allData.find(d => d.id === id);
 
     const payload = {
@@ -194,21 +351,16 @@ window.saveInventoryItem = async function () {
         expirationDate: document.getElementById('editExpirationDate').value || null,
         batchNumber: document.getElementById('editBatchNumber').value,
         description: document.getElementById('editDescription').value,
-
-        // Değişmeyen kritik alanlar
         productId: originalItem.productId,
         companyId: originalItem.companyId,
-        isActive: true, // Normal güncellemede aktif kalır
+        isActive: true,
         updatedAt: new Date().toISOString()
     };
 
     try {
         const res = await fetch(`/api/Inventories`, {
             method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
@@ -225,63 +377,39 @@ window.saveInventoryItem = async function () {
         console.error(e);
         alert('❌ Sunucu hatası.');
     } finally {
-        btn.innerHTML = originalText;
+        btn.innerHTML = '<i class="fas fa-save me-2"></i>Kaydet';
         btn.disabled = false;
     }
 };
 
-
-// ==========================================
-// 3. SİLME (SOFT DELETE) - En Kritik Kısım
-// ==========================================
+// 4. Silme (Soft Delete)
 window.deleteInventoryItem = async function (id) {
-    if (!confirm('⚠️ Bu ürünü arşivlemek (silmek) istediğinize emin misiniz?')) return;
-
+    if (!confirm('⚠️ Bu ürünü arşivlemek istediğinize emin misiniz?')) return;
     const token = localStorage.getItem('jwtToken');
 
-    // ✅ DÜZELTME 1: C# PascalCase (Büyük Harf) Bekleyebilir
-    // Güvenlik için hem Id hem IsActive büyük harfle başlasın
-    const payload = {
-        Id: id,          // Backend'deki "public Guid Id" ile eşleşir
-        IsActive: false  // Backend'deki "public bool IsActive" ile eşleşir
-    };
-
-    console.log("🗑️ Silme İsteği Gönderiliyor:", payload);
-
     try {
-        // ✅ DÜZELTME 2: Doğru Endpoint (Route)
-        const res = await fetch(`/api/Inventories/SoftDeleteInventories`, {
+        const res = await fetch(`/api/Inventories/soft-delete`, {
             method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Id: id, IsActive: false })
         });
 
         if (res.ok) {
             alert('✅ Ürün başarıyla arşivlendi.');
-            await inventoryManagerInstance.loadInventory(); // Tabloyu yenile
+            await inventoryManagerInstance.loadInventory();
         } else {
-            // Hata detayını yakala
-            let errorMessage = "İşlem başarısız.";
-            try {
-                const errorJson = await res.json();
-                errorMessage = errorJson.message || errorJson.title || JSON.stringify(errorJson);
-            } catch {
-                errorMessage = await res.text();
-            }
-            console.error("Backend Hatası:", errorMessage);
-            alert('❌ Hata: ' + errorMessage);
+            const err = await res.json();
+            alert('❌ Hata: ' + (err.message || "İşlem başarısız."));
         }
     } catch (e) {
-        console.error('Ağ Hatası:', e);
-        alert('❌ Sunucu ile iletişim kurulamadı.');
+        console.error(e);
+        alert('❌ Sunucu hatası.');
     }
 };
 
 // Başlatma
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Inventory.js başlatılıyor...');
     inventoryManagerInstance = new InventoryManager();
     inventoryManagerInstance.init();
 });

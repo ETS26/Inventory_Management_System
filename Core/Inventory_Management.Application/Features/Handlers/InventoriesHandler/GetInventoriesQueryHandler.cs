@@ -19,10 +19,12 @@ namespace Inventory_Management.Application.Features.Handlers.InventoriesHandler
         public async Task<List<GetInventoriesQueryResult>> Handle(GetInventoriesQuery request, CancellationToken cancellationToken)
         {
             var val = await _context.Inventories
-        .Include(x => x.Product)            // Ürün bilgilerini getir
-        .ThenInclude(x => x.Category)       // Ürünün Kategori bilgisini getir
-        .Include(x => x.Company)            // Þirket bilgisini getir
-        .ToListAsync(cancellationToken);
+                .Include(x => x.Product)
+                    .ThenInclude(p => p.Category)
+                .Include(x => x.Product)
+                    .ThenInclude(p => p.UnitType)
+                .Include(x => x.Company)
+                .ToListAsync(cancellationToken);
 
             return val.Select(x => new GetInventoriesQueryResult
             {
@@ -37,10 +39,10 @@ namespace Inventory_Management.Application.Features.Handlers.InventoriesHandler
                 ExpirationDate = x.ExpirationDate,
                 Description = x.Description,
 
-                // --- Ýliþkili Tablolardan Gelen Ýsimler ---
-                // Null kontrolü (?) yaparak hata almayý engelliyoruz
+                // --- Ä°liÅŸkili Tablolardan Gelen Ä°simler ---
+                // Null kontrolÃ¼ (?) yaparak hata almayÄ± engelliyoruz
 
-                ProductName = x.Product != null ? x.Product.ProductName : "Tanýmsýz Ürün",
+                ProductName = x.Product != null ? x.Product.ProductName : "TanÄ±msÄ±z ÃœrÃ¼n",
                 Barcode = x.Product != null ? x.Product.Barcode : "-",
 
                 CategoryName = x.Product != null && x.Product.Category != null

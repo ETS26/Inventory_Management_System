@@ -19,8 +19,11 @@ namespace Inventory_Management.Application.Features.Handlers.SuppliersHandler
         public async Task Handle(DeleteSuppliersCommand request, CancellationToken cancellationToken)
         {
             var val = await _context.Suppliers.FindAsync(request.Id);
-            _context.Suppliers.Remove(val);
-            await _context.SaveChangesAsync();
+            if (val != null)
+            {
+                val.IsActive = false;
+                await _context.SaveChangesAsync(cancellationToken);
+            }
         }
     }
 }

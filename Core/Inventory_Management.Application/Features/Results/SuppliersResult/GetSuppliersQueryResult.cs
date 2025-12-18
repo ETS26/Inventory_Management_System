@@ -6,6 +6,7 @@ namespace Inventory_Management.Application.Features.Results.SuppliersResult
 {
     public class GetSuppliersQueryResult : BaseEntity
     {
+        public Guid CompanyId { get; set; }
         public string SupplierName { get; set; }
         public string ContactPerson { get; set; }
         public string Email { get; set; }

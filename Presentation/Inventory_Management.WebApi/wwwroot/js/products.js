@@ -1,7 +1,19 @@
-﻿(function () {
+(function () {
     const token = localStorage.getItem('jwtToken');
     let allProducts = [];
 
+    // --- Helper Functions ---
+    function debounce(func, delay = 300) {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                func.apply(this, args);
+            }, delay);
+        };
+    }
+
+    // --- Initial Setup ---
     document.addEventListener('DOMContentLoaded', function () {
         if (!token) {
             window.location.href = 'login.html';
@@ -11,40 +23,87 @@
         console.log("🚀 Ürünler Sayfası Yüklendi.");
         loadProducts();
         loadProductDropdowns();
+        setupSearch();
     });
+    
+    // --- Search Functionality ---
+    function setupSearch() {
+        const searchInput = document.getElementById('searchInput');
+        if (!searchInput) return;
 
+        searchInput.addEventListener('keyup', debounce(() => {
+            filterAndRenderProducts(searchInput.value);
+        }, 300));
+    }
+
+    function filterAndRenderProducts(term) {
+        const lowerCaseTerm = term.trim().toLowerCase();
+
+        if (!lowerCaseTerm) {
+            renderProducts(allProducts, true); // Show all if search is empty
+            return;
+        }
+
+        const scoredData = allProducts.map(item => {
+            let score = 0;
+            const fields = [
+                item.productName,
+                item.barcode,
+                item.categoryName
+            ];
+
+            for (const field of fields) {
+                if (!field) continue;
+                const lowerCaseField = field.toLowerCase();
+
+                if (lowerCaseField.startsWith(lowerCaseTerm)) {
+                    score += 3;
+                } else if (lowerCaseField.includes(lowerCaseTerm)) {
+                    score += 1;
+                }
+            }
+            return { item, score };
+        })
+        .filter(x => x.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+        const filteredItems = scoredData.map(x => x.item);
+        renderProducts(filteredItems, false); // Render search results
+    }
+
+    // --- Data Loading ---
     async function loadProducts() {
         const container = document.getElementById('productsContainer');
         if (!container) return;
+        container.innerHTML = `<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>`;
 
         try {
             const response = await fetch('/api/Products', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-
             if (!response.ok) throw new Error(`Hata: ${response.status}`);
 
-            const data = await response.json();
-            allProducts = data;
-
-            updateProductStats(data);
-            renderProducts(data);
+            allProducts = await response.json();
+            updateProductStats(allProducts);
+            renderProducts(allProducts, true);
 
         } catch (error) {
             console.error("❌ Ürün yükleme hatası:", error);
-            container.innerHTML = `<div class="col-12 text-center text-danger py-5">Veriler yüklenemedi: ${error.message}</div>`;
+            container.innerHTML = `<div class="col-12 text-center text-danger py-5">Veriler yüklenemedi.</div>`;
         }
     }
 
-    function renderProducts(data) {
+    // --- UI Rendering ---
+    function renderProducts(data, isInitialLoad = false) {
         const container = document.getElementById('productsContainer');
         container.innerHTML = '';
 
         if (!data || data.length === 0) {
+            const message = isInitialLoad ? "Henüz kayıtlı ürün yok." : "Arama sonucuyla eşleşen ürün bulunamadı.";
             container.innerHTML = `
                 <div class="col-12 text-center py-5">
                     <i class="fas fa-box-open fs-1 text-muted mb-3"></i>
-                    <p class="text-muted">Henüz kayıtlı ürün yok.</p>
+                    <p class="text-muted">${message}</p>
                 </div>`;
             return;
         }
@@ -57,118 +116,78 @@
             const productJson = JSON.stringify(p).replace(/"/g, '&quot;');
             const isInactive = p.isActive === false;
 
-            let imageHtml = '';
-            if (p.imageUrl && p.imageUrl.trim() !== "") {
-                imageHtml = `
-                <div class="rounded-3 me-3 overflow-hidden shadow-sm border" style="width: 60px; height: 60px; flex-shrink: 0;">
-                    <img src="${p.imageUrl}" alt="${pName}" style="width: 100%; height: 100%; object-fit: cover;" 
-                         onerror="this.onerror=null; this.src='https://placehold.co/60x60?text=IMG';"> 
-                </div>`;
-            } else {
-                imageHtml = `
-                <div class="rounded-3 bg-primary-light text-primary d-flex align-items-center justify-content-center me-3 shadow-sm" 
-                     style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold; flex-shrink: 0;">
-                    ${initial}
-                </div>`;
-            }
+            let imageHtml = p.imageUrl && p.imageUrl.trim() !== ""
+                ? `<div class="rounded-3 me-3 overflow-hidden shadow-sm border" style="width: 60px; height: 60px; flex-shrink: 0;">
+                       <img src="${p.imageUrl}" alt="${pName}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/60x60?text=IMG';"> 
+                   </div>`
+                : `<div class="rounded-3 bg-primary-light text-primary d-flex align-items-center justify-content-center me-3 shadow-sm" 
+                        style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold; flex-shrink: 0;">
+                       ${initial}
+                   </div>`;
 
             const buttonsHtml = isInactive
-                ? `
-                <button class="btn btn-sm btn-light text-success rounded-circle me-1" title="Geri Yükle" onclick="restoreProduct('${p.id}')">
-                    <i class="fas fa-undo"></i>
-                </button>
-                `
-                : `
-                <button class="btn btn-sm btn-light text-primary rounded-circle me-1" title="Düzenle" onclick='openUpdateModal(${productJson})'>
-                    <i class="fas fa-pen"></i>
-                </button>
-                <button class="btn btn-sm btn-light text-danger rounded-circle" title="Sil" onclick="deleteProduct('${p.id}')">
-                    <i class="fas fa-trash"></i>
-                </button>
-                `;
+                ? `<button class="btn btn-sm btn-light text-success rounded-circle me-1" title="Geri Yükle" onclick="restoreProduct('${p.id}')"><i class="fas fa-undo"></i></button>`
+                : `<button class="btn btn-sm btn-light text-primary rounded-circle me-1" title="Düzenle" onclick='openUpdateModal(${productJson})'><i class="fas fa-pen"></i></button>
+                   <button class="btn btn-sm btn-light text-danger rounded-circle" title="Sil" onclick="deleteProduct('${p.id}')"><i class="fas fa-trash"></i></button>`;
 
-            const card = `
-            <div class="col-md-6 col-lg-4">
-                <div class="card border-0 shadow-sm h-100 p-3 card-hover transition ${isInactive ? 'product-inactive' : ''}">
-                    <div class="d-flex align-items-center mb-3">
-                        ${imageHtml}
-                        <div class="flex-grow-1 overflow-hidden">
-                            <h6 class="fw-bold text-dark mb-0 text-truncate" title="${pName}">${pName}</h6>
-                            <small class="text-muted d-block mt-1 text-truncate">
-                                <i class="fas fa-barcode me-1"></i>${barcode}
-                            </small>
+            container.innerHTML += `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 p-3 card-hover transition ${isInactive ? 'product-inactive' : ''}">
+                        <div class="d-flex align-items-center mb-3">
+                            ${imageHtml}
+                            <div class="flex-grow-1 overflow-hidden">
+                                <h6 class="fw-bold text-dark mb-0 text-truncate" title="${pName}">${pName}</h6>
+                                <small class="text-muted d-block mt-1 text-truncate"><i class="fas fa-barcode me-1"></i>${barcode}</small>
+                            </div>
+                            <div class="ms-2"><span class="badge bg-light text-secondary border">${category}</span></div>
                         </div>
-                        <div class="ms-2">
-                            <span class="badge bg-light text-secondary border">${category}</span>
-                        </div>
-                    </div>
-                    <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
-                        <small class="text-muted small text-truncate" style="max-width: 60%;" title="${p.description || ''}">
-                            <i class="fas fa-info-circle me-1"></i>${p.description || 'Açıklama mevcut değil.'}
-                        </small>
-                        <div class="btn-group">
-                            ${buttonsHtml}
+                        <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                            <small class="text-muted small text-truncate" style="max-width: 60%;" title="${p.description || ''}"><i class="fas fa-info-circle me-1"></i>${p.description || 'Açıklama mevcut değil.'}</small>
+                            <div class="btn-group">${buttonsHtml}</div>
                         </div>
                     </div>
-                </div>
-            </div>`;
-            container.innerHTML += card;
+                </div>`;
         });
     }
 
     async function loadProductDropdowns() {
         try {
-            const catRes = await fetch('/api/Categories', { headers: { 'Authorization': `Bearer ${token}` } });
+            const [catRes, unitRes] = await Promise.all([
+                fetch('/api/Categories', { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch('/api/UnitTypes', { headers: { 'Authorization': `Bearer ${token}` } })
+            ]);
+
             if (catRes.ok) {
                 const cats = await catRes.json();
-                const catSelects = document.querySelectorAll('#categorySelect, #updateCategorySelect');
-                catSelects.forEach(select => {
+                document.querySelectorAll('#categorySelect, #updateCategorySelect').forEach(select => {
                     select.innerHTML = '<option value="" selected disabled>Seçiniz...</option>';
-                    cats.forEach(c => {
-                        const opt = document.createElement('option');
-                        opt.value = c.id;
-                        opt.text = c.categoryName;
-                        select.appendChild(opt);
-                    });
+                    cats.forEach(c => select.innerHTML += `<option value="${c.id}">${c.categoryName}</option>`);
                 });
                 const countEl = document.getElementById('totalCategoriesCount');
                 if (countEl) countEl.innerText = cats.length;
             }
 
-            const unitRes = await fetch('/api/UnitTypes', { headers: { 'Authorization': `Bearer ${token}` } });
             if (unitRes.ok) {
                 const units = await unitRes.json();
-                const unitSelects = document.querySelectorAll('#unitTypeSelect, #updateUnitTypeSelect');
-                unitSelects.forEach(select => {
+                document.querySelectorAll('#unitTypeSelect, #updateUnitTypeSelect').forEach(select => {
                     select.innerHTML = '<option value="" selected disabled>Seçiniz...</option>';
-                    units.forEach(u => {
-                        const opt = document.createElement('option');
-                        opt.value = u.id;
-                        opt.text = u.unitName;
-                        select.appendChild(opt);
-                    });
+                    units.forEach(u => select.innerHTML += `<option value="${u.id}">${u.unitName}</option>`);
                 });
             }
         } catch (e) { console.error("Dropdown hatası:", e); }
     }
 
     function updateProductStats(data) {
-        if (document.getElementById('totalProductsCount')) {
-            document.getElementById('totalProductsCount').innerText = data.length;
-            document.getElementById('activeProductsCount').innerText = data.filter(x => x.isActive !== false).length;
-        }
+        const totalEl = document.getElementById('totalProductsCount');
+        const activeEl = document.getElementById('activeProductsCount');
+        if (totalEl) totalEl.innerText = data.length;
+        if (activeEl) activeEl.innerText = data.filter(x => x.isActive !== false).length;
     }
 
-    window.filterProducts = function () {
-        const searchText = document.getElementById('searchInput').value.toLowerCase();
-        const filtered = allProducts.filter(p =>
-            p.productName.toLowerCase().includes(searchText) ||
-            (p.barcode && p.barcode.toLowerCase().includes(searchText)) ||
-            (p.categoryName && p.categoryName.toLowerCase().includes(searchText))
-        );
-        renderProducts(filtered);
-    };
-
+    // --- CRUD and other window functions ---
+    
+    // (The rest of the functions: saveProduct, openUpdateModal, updateProduct, deleteProduct, restoreProduct, saveCategory remain unchanged)
+    
     window.saveProduct = async function () {
         const name = document.getElementById('productNameInput').value;
         const barcode = document.getElementById('barcodeInput').value;
@@ -308,26 +327,19 @@
                 alert('✅ Ürün başarıyla silindi/pasife alındı.');
                 loadProducts();
             } else {
-                // Hata yönetimini güvenli hale getiriyoruz
-                // Önce metin olarak okuyoruz, sonra JSON parse deniyoruz
-                // Bu sayede "body stream already read" hatası almazsınız
                 const responseText = await res.text();
                 let errorMessage = "İşlem başarısız.";
 
                 try {
                     const err = JSON.parse(responseText);
-                    // Backend'in döndürebileceği farklı hata formatlarını kontrol et
                     errorMessage = err.message || err.error || err.detail || err.title || errorMessage;
                 } catch (e) {
-                    // JSON değilse (örneğin HTML hata sayfası döndüyse)
-                    // Mesaj çok uzunsa kısaltabiliriz veya genel hata verebiliriz
                     if (responseText && responseText.length < 500) {
                         errorMessage = responseText;
                     } else {
                         errorMessage = `Sunucu Hatası (${res.status})`;
                     }
                 }
-
                 alert('❌ Hata: ' + errorMessage);
             }
         } catch (e) {

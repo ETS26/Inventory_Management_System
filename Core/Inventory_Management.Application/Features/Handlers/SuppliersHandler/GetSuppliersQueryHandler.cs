@@ -22,6 +22,7 @@ namespace Inventory_Management.Application.Features.Handlers.SuppliersHandler
             return val.Select(x => new GetSuppliersQueryResult
             {
                 Id = x.Id,
+                CompanyId = x.CompanyId,
                 SupplierName = x.SupplierName,
                 ContactPerson = x.ContactPerson,
                 Address = x.Address,
