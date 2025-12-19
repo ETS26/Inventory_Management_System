@@ -96,6 +96,7 @@ class AuthGuard {
 
     static logout() {
         localStorage.clear();
+        sessionStorage.clear(); // Clear chat history as well
         window.location.href = 'login.html';
     }
 }

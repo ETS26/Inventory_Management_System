@@ -253,6 +253,7 @@
             }
             
             fillDropdown(document.getElementById('inventorySelect'), allInventories, 'inventory');
+            fillDropdown(document.getElementById('updateInventorySelect'), allInventories, 'inventory');
 
         } catch (error) {
             console.error("❌ Dropdown Yükleme Hatası:", error);
@@ -522,43 +523,43 @@
         }
     };
 
-    window.openUpdateMovementModal = function(movement) {
+    window.openUpdateMovementModal = function (movement) {
         console.log('Güncelleme modalı için gelen hareket verisi:', movement);
 
-        // ID ve basit inputları ayarla
+        // ID ve basit inputları doğrudan ayarla
         document.getElementById('updateMovementId').value = movement.id;
         document.getElementById('updateQuantityInput').value = movement.quantity;
         document.getElementById('updateDescriptionInput').value = movement.description || '';
 
-        // --- Select elementlerini yeniden doldur ve seçili değeri ayarla ---
-
+        // --- SEÇİM LİSTELERİNİ DOĞRUDAN GÜNCELLE (Yeniden Doldurma!) ---
+        
         // Envanter/Ürün
         const inventorySelect = document.getElementById('updateInventorySelect');
-        fillDropdown(inventorySelect, allInventories, 'inventory');
         inventorySelect.value = movement.inventoryId;
-        
+        if (!inventorySelect.value) {
+            // Eğer değer atanamadıysa, listeyi yenileyip tekrar deneyebiliriz (güvenlik önlemi)
+            fillDropdown(inventorySelect, allInventories, 'inventory');
+            inventorySelect.value = movement.inventoryId;
+            console.warn('Envanter seçimi ilk denemede başarısız oldu, liste yenilendi. ID:', movement.inventoryId);
+        }
+
         // Hareket Tipi
         const moveTypeSelect = document.getElementById('updateMoveTypeSelect');
-        fillMoveTypeDropdown(moveTypeSelect, allMoveTypes);
         moveTypeSelect.value = movement.moveTypeId;
+        if (!moveTypeSelect.value) {
+            console.warn('Hareket tipi seçimi yapılamadı. ID:', movement.moveTypeId);
+        }
 
         // Tedarikçi
         const supplierSelect = document.getElementById('updateSupplierSelect');
-        supplierSelect.innerHTML = ''; // Önce temizle
-        supplierSelect.innerHTML = '<option value="">Tedarikçi Seçiniz</option>';
-        if (allSuppliers && allSuppliers.length > 0) {
-            allSuppliers.forEach(s => {
-                const option = document.createElement('option');
-                option.value = s.id;
-                option.textContent = s.supplierName;
-                supplierSelect.appendChild(option);
-            });
-        }
         supplierSelect.value = movement.supplierId;
-
+        if (!supplierSelect.value) {
+            console.warn('Tedarikçi seçimi yapılamadı. ID:', movement.supplierId);
+        }
+        
         // Ayarlanan değerleri kontrol et
         console.log(`Modaldaki Değerler -> Miktar: ${document.getElementById('updateQuantityInput').value}, Envanter: ${inventorySelect.value}, Tip: ${moveTypeSelect.value}, Tedarikçi: ${supplierSelect.value}`);
-        
+
         // Modal'ı göster
         const updateModal = new bootstrap.Modal(document.getElementById('updateMovementModal'));
         updateModal.show();

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Inventory_Management.WebApi.Middlewares;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.DependencyInjection;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -52,6 +53,9 @@ try
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.WriteIndented = true;
     });
+
+    builder.Services.AddHttpClient();
+
 
     builder.Services.AddEndpointsApiExplorer();
 
@@ -143,3 +147,4 @@ catch (Exception ex)
     Console.WriteLine(ex);
     throw;
 }
+

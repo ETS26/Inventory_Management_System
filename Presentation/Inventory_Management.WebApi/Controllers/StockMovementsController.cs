@@ -40,11 +40,18 @@ namespace Inventory_Management.WebApi.Controllers
             
         }
 
-        [HttpDelete]
+        [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStockMovements(Guid id)
         {
-            await _mediator.Send(new DeleteStock_MovementsCommand(id));
-            return Ok("Stok hareketi silme başarılı");
+            try
+            {
+                await _mediator.Send(new DeleteStock_MovementsCommand(id));
+                return Ok(new { isSuccess = true, message = "Stok hareketi silme başarılı" });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpGet("GetStockMovementsById")]
@@ -54,11 +61,23 @@ namespace Inventory_Management.WebApi.Controllers
             return Ok(val);
         }
 
-        [HttpPut]
-        public async Task<IActionResult> UpdateStockMovements(UpdateStock_MovementsCommand command)
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateStockMovements(Guid id, UpdateStock_MovementsCommand command)
         {
-            await _mediator.Send(command);
-            return Ok("Stok hareketi güncelleme başarılı");
+            if (id != command.Id)
+            {
+                return BadRequest(new { message = "ID uyuşmazlığı." });
+            }
+
+            try
+            {
+                await _mediator.Send(command);
+                return Ok(new { isSuccess = true, message = "Stok hareketi güncelleme başarılı" });
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
-  }
+}

@@ -56,7 +56,7 @@ namespace Inventory_Management.WebApi.Middlewares
 
             context.Response.StatusCode = (int)statusCode;
 
-            var result = JsonSerializer.Serialize(new { error = message });
+            var result = JsonSerializer.Serialize(new { response = message });
 
             return context.Response.WriteAsync(result);
         }

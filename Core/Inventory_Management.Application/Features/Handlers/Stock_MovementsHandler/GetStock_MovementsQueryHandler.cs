@@ -66,18 +66,23 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
                 // Listeye Ekle (DTO Oluştur)
                 resultList.Add(new GetStock_MovementsQueryResult
                 {
+                    // ID'ler
                     Id = item.Id,
-                    IsActive = item.IsActive, // IsActive durumunu DTO'ya ekle
-                    CreatedAt = item.CreatedAt,
+                    InventoryId = item.InventoryId,
+                    MoveTypeId = item.MoveTypeId,
+                    SupplierId = item.SupplierId,
+                    UserId = item.UserId,
 
-                    // İsimleri Al (Nesneyi DEĞİL!)
+                    // Diğer Bilgiler
+                    IsActive = item.IsActive, 
+                    CreatedAt = item.CreatedAt,
                     ProductName = inventoryItem?.Product?.ProductName ?? "Silinmiş Ürün",
                     MoveTypeName = item.MoveType?.MoveType ?? "-",
                     UnitTypeName = inventoryItem?.Product?.UnitType?.UnitName ?? "-",
                     UserName = item.User != null ? $"{item.User.FirstName} {item.User.LastName}" : "Bilinmiyor",
                     SupplierName = item.Supplier?.SupplierName ?? "-",
                     BatchNumber = inventoryItem?.BatchNumber,
-                    ExpirationDate = inventoryItem.ExpirationDate,
+                    ExpirationDate = inventoryItem?.ExpirationDate,
                     Quantity = item.Quantity,
                     Description = item.Description ?? "",
                     Payment = item.Quantity * unitPrice
