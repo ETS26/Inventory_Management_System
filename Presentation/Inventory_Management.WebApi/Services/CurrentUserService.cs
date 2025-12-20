@@ -21,5 +21,14 @@ namespace Inventory_Management.WebApi.Services
                 return claim != null ? Guid.Parse(claim.Value) : null;
             }
         }
+
+        public Guid UserId
+        {
+            get
+            {
+                var claim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier);
+                return claim != null ? Guid.Parse(claim.Value) : Guid.Empty;
+            }
+        }
     }
 }

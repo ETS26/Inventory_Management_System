@@ -32,5 +32,6 @@ namespace Inventory_Management.Persistance.Context
     {
         // Migration yaparken şirket veya kullanıcı önemli değildir, null dönebiliriz.
         public Guid? CompanyId => null;
+        public Guid UserId => Guid.Empty;
     }
 }
