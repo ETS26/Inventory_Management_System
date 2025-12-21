@@ -116,18 +116,30 @@
             const productJson = JSON.stringify(p).replace(/"/g, '&quot;');
             const isInactive = p.isActive === false;
 
-            let imageHtml = p.imageUrl && p.imageUrl.trim() !== ""
-                ? `<div class="rounded-3 me-3 overflow-hidden shadow-sm border" style="width: 60px; height: 60px; flex-shrink: 0;">
-                       <img src="${p.imageUrl}" alt="${pName}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/60x60?text=IMG';"> 
-                   </div>`
-                : `<div class="rounded-3 bg-primary-light text-primary d-flex align-items-center justify-content-center me-3 shadow-sm" 
+            // Check both casing possibilities for ImageURL
+            const imgUrl = p.imageURL || p.imageUrl;
+
+            let imageHtml;
+            if (imgUrl && imgUrl.trim() !== "") {
+                const rawUrl = imgUrl.trim();
+                
+                imageHtml = `
+                <a href="${rawUrl}" target="_blank" rel="noopener noreferrer" class="rounded-3 me-3 overflow-hidden shadow-sm border d-block" 
+                     style="width: 60px; height: 60px; flex-shrink: 0;"
+                     title="Açılacak Link: ${rawUrl}">
+                       <img src="${rawUrl}" alt="${pName}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='https://placehold.co/60x60?text=IMG';"> 
+                   </a>`;
+            } else {
+                imageHtml = `<div class="rounded-3 bg-primary-light text-primary d-flex align-items-center justify-content-center me-3 shadow-sm" 
                         style="width: 60px; height: 60px; font-size: 1.5rem; font-weight: bold; flex-shrink: 0;">
                        ${initial}
                    </div>`;
+            }
 
             const buttonsHtml = isInactive
                 ? `<button class="btn btn-sm btn-light text-success rounded-circle me-1" title="Geri Yükle" onclick="restoreProduct('${p.id}')"><i class="fas fa-undo"></i></button>`
-                : `<button class="btn btn-sm btn-light text-primary rounded-circle me-1" title="Düzenle" onclick='openUpdateModal(${productJson})'><i class="fas fa-pen"></i></button>
+                : `<button class="btn btn-sm btn-light text-warning rounded-circle me-1" title="Sipariş Ver" onclick='openProductOrderModal(${productJson})'><i class="fas fa-shopping-cart"></i></button>
+                   <button class="btn btn-sm btn-light text-primary rounded-circle me-1" title="Düzenle" onclick='openUpdateModal(${productJson})'><i class="fas fa-pen"></i></button>
                    <button class="btn btn-sm btn-light text-danger rounded-circle" title="Sil" onclick="deleteProduct('${p.id}')"><i class="fas fa-trash"></i></button>`;
 
             container.innerHTML += `
@@ -138,6 +150,7 @@
                             <div class="flex-grow-1 overflow-hidden">
                                 <h6 class="fw-bold text-dark mb-0 text-truncate" title="${pName}">${pName}</h6>
                                 <small class="text-muted d-block mt-1 text-truncate"><i class="fas fa-barcode me-1"></i>${barcode}</small>
+                                <small class="text-secondary d-block mt-1" style="font-size: 0.75rem;">${p.categoryName || '-'} • ${p.unitTypeName || '-'}</small>
                             </div>
                             <div class="ms-2"><span class="badge bg-light text-secondary border">${category}</span></div>
                         </div>
@@ -413,6 +426,45 @@
             saveButton.innerHTML = originalText;
             saveButton.disabled = false;
         }
+    };
+
+    window.openProductOrderModal = async function(product) {
+        document.getElementById('orderProductId').value = product.id; 
+        document.getElementById('orderProductName').value = product.productName;
+        document.getElementById('orderQuantity').value = 100;
+        document.getElementById('orderDescription').value = '';
+
+        const userName = localStorage.getItem('userName') || 'Misafir';
+        const userCompany = localStorage.getItem('userCompany') || '';
+        document.getElementById('orderUserName').innerText = userName;
+        document.getElementById('orderUserCompany').innerText = userCompany;
+        const initials = userName === 'Misafir' ? 'U' : userName.match(/\b(\w)/g).join('').substring(0, 2).toUpperCase();
+        document.getElementById('orderUserInitials').innerText = initials;
+
+        const supplierSelect = document.getElementById('orderSupplierSelect');
+        supplierSelect.innerHTML = '<option value="" selected disabled>Yükleniyor...</option>';
+        
+        try {
+            const res = await fetch('/api/Suppliers?IsActive=true', {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('jwtToken')}` }
+            });
+            if(res.ok) {
+                const suppliers = await res.json();
+                supplierSelect.innerHTML = '<option value="" selected disabled>Tedarikçi Seçiniz...</option>';
+                suppliers.forEach(s => {
+                    const comp = s.companyName || s.contactPerson || 'Genel';
+                    supplierSelect.innerHTML += `<option value="${s.id}">${s.supplierName} (${comp})</option>`;
+                });
+            } else {
+                supplierSelect.innerHTML = '<option value="" disabled>Tedarikçiler yüklenemedi</option>';
+            }
+        } catch(e) {
+            console.error(e);
+            supplierSelect.innerHTML = '<option value="" disabled>Hata oluştu</option>';
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('orderModal'));
+        modal.show();
     };
 
 })();

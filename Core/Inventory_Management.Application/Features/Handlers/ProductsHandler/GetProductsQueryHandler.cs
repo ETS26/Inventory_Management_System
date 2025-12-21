@@ -19,7 +19,10 @@ namespace Inventory_Management.Application.Features.Handlers.ProductsHandler
         }
         public async Task<List<GetProductsQueryResult>> Handle(GetProductsQuery request, CancellationToken cancellationToken)
         {
-            var query = _context.Products.AsQueryable();
+            var query = _context.Products
+                .Include(x => x.Category)
+                .Include(x => x.UnitType)
+                .AsQueryable();
 
             if (request.IsActive.HasValue)
             {
@@ -36,6 +39,8 @@ namespace Inventory_Management.Application.Features.Handlers.ProductsHandler
                 ImageURL = x.ImageURL,
                 CategoryId = x.CategoryId,
                 UnitTypeId = x.UnitTypeId,
+                CategoryName = x.Category?.CategoryName,
+                UnitTypeName = x.UnitType?.UnitName,
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt,
                 IsActive = x.IsActive

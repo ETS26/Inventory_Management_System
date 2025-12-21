@@ -163,6 +163,9 @@ class Dashboard {
             });
 
             // 2. Verileri ilgili modüllere dağıt
+            this.allSuppliers = suppliers;
+            this.allMovements = movements;
+            
             this.processStatsCards(inventories, suppliers, movements, calendarData);
             this.processInventoryWidgets(inventories);
             this.processRecentActivity(movements);
@@ -280,6 +283,13 @@ class Dashboard {
      * Envanter ile ilgili Widget'ları (Kritik Stok, SKT, Kategori) işle
      */
     processInventoryWidgets(inventories) {
+        // Global erişim için sakla
+        window.dashboardData = {
+            inventories: inventories,
+            suppliers: this.allSuppliers, // init metodunda set edilecek
+            movements: this.allMovements      // init metodunda set edilecek
+        };
+
         // Kritik stok analizi
         const critical = inventories.filter(p => p.quantity <= p.criticalStockQuantity && p.quantity > 0);
         this.renderCriticalTable(critical.slice(0, 5));
@@ -306,18 +316,24 @@ class Dashboard {
     renderCriticalTable(items) {
         const tbody = document.getElementById('criticalStockTable');
         if (!tbody) return;
+        
+        // Items'ı global bir değişkene ata ki onclick'te erişebilelim
+        window.criticalItemsList = items;
+
         if (items.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="text-center text-success py-3 small"><i class="fas fa-check-circle me-2"></i>Kritik stokta ürün yok.</td></tr>`;
             return;
         }
-        tbody.innerHTML = items.map(item => `
+        tbody.innerHTML = items.map((item, index) => `
             <tr>
                 <td class="fw-bold text-dark small">${item.productName || 'Ürün'}</td>
                 <td class="text-danger fw-bold small">${item.quantity}</td>
                 <td class="text-muted small">${item.criticalStockQuantity}</td>
                 <td><span class="badge bg-danger-subtle text-danger small">KRİTİK</span></td>
                 <td class="text-end">
-                    <button class="btn btn-sm btn-light text-primary border-0" title="Sipariş Ver"><i class="fas fa-shopping-cart"></i></button>
+                    <button class="btn btn-sm btn-light text-primary border-0" title="Sipariş Ver" onclick="openOrderModal(${index})">
+                        <i class="fas fa-shopping-cart"></i>
+                    </button>
                 </td>
             </tr>`).join('');
     }
@@ -598,3 +614,115 @@ document.addEventListener('DOMContentLoaded', async () => {
 // GLOBAL FUNCTIONS
 // ==========================================
 window.logout = AuthGuard.logout;
+
+// ==========================================
+// ORDER MODAL FUNCTIONS
+// ==========================================
+window.openOrderModal = function(index) {
+    const item = window.criticalItemsList[index];
+    if (!item) return;
+
+    // 1. Ürün Bilgilerini Doldur
+    document.getElementById('orderProductId').value = item.productId || item.id; // Inventory item id or product id
+    document.getElementById('orderProductName').value = item.productName;
+    document.getElementById('orderQuantity').value = item.criticalStockQuantity > 0 ? item.criticalStockQuantity * 2 : 100; // Varsayılan öneri
+    document.getElementById('orderDescription').value = ''; // Açıklama alanını temizle
+
+    // 2. Kullanıcı Bilgilerini Doldur
+    const userName = localStorage.getItem('userName') || 'Misafir';
+    const userCompany = localStorage.getItem('userCompany') || 'Şirket Belirtilmemiş';
+    document.getElementById('orderUserName').innerText = userName;
+    document.getElementById('orderUserCompany').innerText = userCompany;
+    document.getElementById('orderUserInitials').innerText = Utils.getInitials(userName);
+
+    // 3. Tedarikçileri Doldur ve Tahmin Et
+    const supplierSelect = document.getElementById('orderSupplierSelect');
+    supplierSelect.innerHTML = '<option value="" selected disabled>Tedarikçi Seçiniz...</option>';
+    
+    const allSuppliers = window.dashboardData?.suppliers || [];
+    allSuppliers.forEach(s => {
+        supplierSelect.innerHTML += `<option value="${s.id}">${s.supplierName} (${s.company?.companyName || 'Genel'})</option>`;
+    });
+
+    // 4. Son Tedarikçiyi Bul (Tahmin)
+    const hintEl = document.getElementById('supplierHint');
+    hintEl.innerHTML = '';
+    
+    if (window.dashboardData?.movements) {
+        // Bu ürün için yapılmış son GİRİŞ hareketini bul
+        const lastInput = window.dashboardData.movements
+            .filter(m => (m.inventoryId === item.id || m.productName === item.productName) && 
+                         (m.moveTypeName?.toLowerCase().includes('in') || m.moveTypeName?.toLowerCase().includes('gir')))
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+
+        if (lastInput && lastInput.supplierId) {
+            supplierSelect.value = lastInput.supplierId;
+            hintEl.innerHTML = `<i class="fas fa-history text-info me-1"></i>Son sipariş bu tedarikçiden (${Utils.formatDate(lastInput.createdAt)}) alınmış.`;
+        }
+    }
+
+    // Modalı Aç
+    const modal = new bootstrap.Modal(document.getElementById('orderModal'));
+    modal.show();
+};
+
+window.submitOrder = async function() {
+    const btn = document.querySelector('#orderModal .btn-primary');
+    const originalText = btn.innerHTML;
+    
+    const supplierId = document.getElementById('orderSupplierSelect').value;
+    const productName = document.getElementById('orderProductName').value;
+    const quantity = document.getElementById('orderQuantity').value;
+    const description = document.getElementById('orderDescription').value;
+    const userName = localStorage.getItem('userName');
+    const userCompany = localStorage.getItem('userCompany');
+
+    if (!supplierId || !quantity) {
+        alert("Lütfen tedarikçi ve miktar alanlarını doldurunuz.");
+        return;
+    }
+
+    const isProductOrder = document.getElementById('isProductOrder')?.value === 'true';
+    const idVal = document.getElementById('orderProductId').value;
+
+    const payload = {
+        inventoryId: isProductOrder ? null : idVal,
+        productId: isProductOrder ? idVal : null,
+        userId: localStorage.getItem('userId'),
+        supplierId: supplierId,
+        productName: productName,
+        quantity: parseInt(quantity),
+        description: description,
+        userFullName: userName,
+        userCompany: userCompany
+    };
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Gönderiliyor...';
+
+        const res = await fetch('/api/Suppliers/send-order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('jwtToken')}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            alert("✅ Sipariş talebi başarıyla iletildi!");
+            bootstrap.Modal.getInstance(document.getElementById('orderModal')).hide();
+        } else {
+            const err = await res.text();
+            alert("Hata: " + err);
+        }
+
+    } catch (e) {
+        console.error(e);
+        alert("Sunucu hatası oluştu.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+};

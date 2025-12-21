@@ -1,6 +1,7 @@
 using Inventory_Management.Application.Features.Commands.Stock_MovementsCommand;
 using Inventory_Management.Domain.Entities;
 using Inventory_Management.Persistance.Context;
+using Inventory_Management.Application.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -12,38 +13,40 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
     public class CreateStock_MovementsCommandHandler : IRequestHandler<CreateStock_MovementsCommand>
     {
         private readonly Inventory_Management_Context _context;
+        private readonly IEmailService _emailService;
 
-        public CreateStock_MovementsCommandHandler(Inventory_Management_Context context)
+        public CreateStock_MovementsCommandHandler(Inventory_Management_Context context, IEmailService emailService)
         {
             _context = context;
+            _emailService = emailService;
         }
 
         public async Task Handle(CreateStock_MovementsCommand request, CancellationToken cancellationToken)
         {
             Inventories targetInventory = null;
 
-            // 0. KULLANICIYI VE ÞÝRKETÝNÝ BUL
-            // Envanter ve Hareket kayýtlarý kullanýcýnýn þirketine ait olmalýdýr.
+            // 0. KULLANICIYI VE ï¿½ï¿½RKETï¿½Nï¿½ BUL
+            // Envanter ve Hareket kayï¿½tlarï¿½ kullanï¿½cï¿½nï¿½n ï¿½irketine ait olmalï¿½dï¿½r.
             var user = await _context.Users.FindAsync(new object[] { request.UserId }, cancellationToken);
-            if (user == null) throw new Exception("Ýþlemi yapan kullanýcý sistemde bulunamadý.");
+            if (user == null) throw new Exception("ï¿½ï¿½lemi yapan kullanï¿½cï¿½ sistemde bulunamadï¿½.");
 
             // ---------------------------------------------------------
-            // 1. ENVANTER BELÝRLEME (YENÝ MÝ / MEVCUT MU?)
+            // 1. ENVANTER BELï¿½RLEME (YENï¿½ Mï¿½ / MEVCUT MU?)
             // ---------------------------------------------------------
 
             if (request.IsNewInventory)
             {
-                // --- SENARYO A: YENÝ KART AÇMA ---
+                // --- SENARYO A: YENï¿½ KART Aï¿½MA ---
                 if (request.ProductId == null || request.ProductId == Guid.Empty)
-                    throw new Exception("Yeni kart açmak için bir Ürün seçmelisiniz.");
+                    throw new Exception("Yeni kart aï¿½mak iï¿½in bir ï¿½rï¿½n seï¿½melisiniz.");
 
-                // Yeni Envanter Nesnesi (Henüz veritabanýnda yok)
+                // Yeni Envanter Nesnesi (Henï¿½z veritabanï¿½nda yok)
                 targetInventory = new Inventories
                 {
                     Id = Guid.NewGuid(),
                     ProductId = request.ProductId.Value,
-                    CompanyId = user.CompanyId, // Kullanýcýnýn þirketine kaydet
-                    Quantity = 0, // Miktarý aþaðýda hareket ile güncelleyeceðiz
+                    CompanyId = user.CompanyId, // Kullanï¿½cï¿½nï¿½n ï¿½irketine kaydet
+                    Quantity = 0, // Miktarï¿½ aï¿½aï¿½ï¿½da hareket ile gï¿½ncelleyeceï¿½iz
 
                     // Command'den gelen verileri ata
                     PurchasePrice = request.PurchasePrice,
@@ -52,7 +55,7 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
                     BatchNumber = !string.IsNullOrEmpty(request.BatchNumber) ? request.BatchNumber : "AUTO-" + DateTime.Now.ToString("yyMMdd"),
                     ExpirationDate = request.ExpirationDate,
 
-                    Description = "Stok Hareketi ile oluþturuldu.",
+                    Description = "Stok Hareketi ile oluï¿½turuldu.",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -64,29 +67,30 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
             {
                 // --- SENARYO B: MEVCUT ENVANTER ---
                 if (request.InventoryId == null || request.InventoryId == Guid.Empty)
-                    throw new Exception("Lütfen listeye eklemek için bir stok kartý seçiniz.");
+                    throw new Exception("Lï¿½tfen listeye eklemek iï¿½in bir stok kartï¿½ seï¿½iniz.");
 
                 targetInventory = await _context.Inventories
+                    .Include(x => x.Product)
                     .FirstOrDefaultAsync(x => x.Id == request.InventoryId, cancellationToken);
 
                 if (targetInventory == null)
-                    throw new Exception("Seçilen envanter kaydý bulunamadý.");
+                    throw new Exception("Seï¿½ilen envanter kaydï¿½ bulunamadï¿½.");
             }
 
             // ---------------------------------------------------------
-            // 2. HAREKET TÝPÝ VE STOK MÝKTARI GÜNCELLEME
+            // 2. HAREKET Tï¿½Pï¿½ VE STOK Mï¿½KTARI Gï¿½NCELLEME
             // ---------------------------------------------------------
 
             var moveType = await _context.Move_Types
                 .FirstOrDefaultAsync(x => x.Id == request.MoveTypeId, cancellationToken);
 
             if (moveType == null)
-                throw new Exception("Geçersiz hareket tipi!");
+                throw new Exception("Geï¿½ersiz hareket tipi!");
 
-            // Büyük/Küçük harf duyarsýz kontrol
+            // Bï¿½yï¿½k/Kï¿½ï¿½ï¿½k harf duyarsï¿½z kontrol
             string typeName = moveType.MoveType.ToLower();
-            bool isIncome = typeName.Contains("stock in") || typeName.Contains("giriþ") || typeName.Contains("in");
-            bool isOutcome = typeName.Contains("stock out") || typeName.Contains("çýkýþ") || typeName.Contains("out");
+            bool isIncome = typeName.Contains("stock in") || typeName.Contains("giriï¿½") || typeName.Contains("in");
+            bool isOutcome = typeName.Contains("stock out") || typeName.Contains("ï¿½ï¿½kï¿½ï¿½") || typeName.Contains("out");
 
             if (isIncome)
             {
@@ -94,19 +98,19 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
             }
             else if (isOutcome)
             {
-                // Yeni kart açýlýyorsa stok zaten 0'dýr, eksiye düþemez.
+                // Yeni kart aï¿½ï¿½lï¿½yorsa stok zaten 0'dï¿½r, eksiye dï¿½ï¿½emez.
                 if (targetInventory.Quantity < request.Quantity)
                 {
-                    throw new Exception($"Yetersiz Stok! Mevcut: {targetInventory.Quantity}, Çýkýþ Ýstenen: {request.Quantity}");
+                    throw new Exception($"Yetersiz Stok! Mevcut: {targetInventory.Quantity}, ï¿½ï¿½kï¿½ï¿½ ï¿½stenen: {request.Quantity}");
                 }
                 targetInventory.Quantity -= request.Quantity;
             }
 
             // ---------------------------------------------------------
-            // 3. FÝYAT HESAPLAMA VE HAREKET KAYDI
+            // 3. Fï¿½YAT HESAPLAMA VE HAREKET KAYDI
             // ---------------------------------------------------------
 
-            // O anki iþlem tutarýný hesapla (Alýþsa Alýþ Fiyatý, Satýþsa Satýþ Fiyatý)
+            // O anki iï¿½lem tutarï¿½nï¿½ hesapla (Alï¿½ï¿½sa Alï¿½ï¿½ Fiyatï¿½, Satï¿½ï¿½sa Satï¿½ï¿½ Fiyatï¿½)
             float unitPrice = isIncome ? targetInventory.PurchasePrice : targetInventory.SalePrice;
             float totalPayment = request.Quantity * unitPrice;
 
@@ -116,7 +120,7 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
                 InventoryId = targetInventory.Id, // Yeni ise yeni ID, eskiyse eski ID
                 MoveTypeId = request.MoveTypeId,
                 UserId = request.UserId,
-                SupplierId = request.SupplierId, // Command'da zorunlu Guid, boþsa Guid.Empty gelir
+                SupplierId = request.SupplierId, // Command'da zorunlu Guid, boï¿½sa Guid.Empty gelir
                 Quantity = request.Quantity,
                 Payment = totalPayment,
                 Description = request.Description,
@@ -127,7 +131,7 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
 
             await _context.Stock_Movements.AddAsync(movement, cancellationToken);
 
-            // Mevcut envanter güncellendiyse EF Core'a bildir (Yeni ise zaten Added durumunda)
+            // Mevcut envanter gï¿½ncellendiyse EF Core'a bildir (Yeni ise zaten Added durumunda)
             if (!request.IsNewInventory)
             {
                 _context.Inventories.Update(targetInventory);
@@ -136,8 +140,64 @@ namespace Inventory_Management.Application.Features.Handlers.Stock_MovementsHand
             // ---------------------------------------------------------
             // 4. KAYDET (TRANSACTION)
             // ---------------------------------------------------------
-            // Tüm iþlemler (Yeni Envanter + Stok Güncelleme + Hareket Kaydý) tek seferde yapýlýr.
+            // Tï¿½m iï¿½lemler (Yeni Envanter + Stok Gï¿½ncelleme + Hareket Kaydï¿½) tek seferde yapï¿½lï¿½r.
             await _context.SaveChangesAsync(cancellationToken);
+
+            // 5. MAIL GONDERIMI (Kritik Stok KontrolÃ¼)
+            if (isOutcome && targetInventory.Quantity <= targetInventory.CriticalStockQuantity)
+            {
+                try 
+                {
+                    // Åžirketin maili olan tÃ¼m kullanÄ±cÄ±larÄ±nÄ± getir
+                    var companyUsers = await _context.Users
+                        .Where(u => u.CompanyId == targetInventory.CompanyId && !string.IsNullOrEmpty(u.Email))
+                        .ToListAsync(cancellationToken);
+
+                    // TedarikÃ§i adÄ±nÄ± bul
+                    string supplierName = "BelirtilmemiÅŸ";
+                    if (request.SupplierId != Guid.Empty)
+                    {
+                        var supplier = await _context.Suppliers.FindAsync(new object[] { request.SupplierId }, cancellationToken);
+                        if (supplier != null) supplierName = supplier.SupplierName;
+                    }
+
+                    foreach (var u in companyUsers)
+                    {
+                         string productName = targetInventory.Product?.ProductName ?? "Bilinmeyen ÃœrÃ¼n";
+                         string barcode = targetInventory.Product?.Barcode ?? "-";
+                         string batchNumber = targetInventory.BatchNumber ?? "-";
+                         
+                         string subject = $"KRÄ°TÄ°K STOK UYARISI: {productName}";
+                         
+                         string body = $@"
+                            <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 5px;'>
+                                <h2 style='color: #d9534f;'>Kritik Stok UyarÄ±sÄ±</h2>
+                                <p>AÅŸaÄŸÄ±daki Ã¼rÃ¼n iÃ§in stok miktarÄ± kritik seviyenin altÄ±na dÃ¼ÅŸmÃ¼ÅŸtÃ¼r.</p>
+                                <ul style='background-color: #f9f9f9; padding: 15px; list-style-type: none;'>
+                                    <li><strong>ÃœrÃ¼n:</strong> {productName}</li>
+                                    <li><strong>Barkod:</strong> {barcode}</li>
+                                    <li><strong>Seri/Parti No:</strong> {batchNumber}</li>
+                                    <li><strong>TedarikÃ§i:</strong> {supplierName}</li>
+                                    <li style='margin-top: 10px;'><strong>Mevcut Stok:</strong> <span style='color:red; font-weight:bold'>{targetInventory.Quantity}</span></li>
+                                    <li><strong>Kritik Seviye:</strong> {targetInventory.CriticalStockQuantity}</li>
+                                </ul>
+                                <p>LÃ¼tfen en kÄ±sa sÃ¼rede stok yenilemesi yapÄ±nÄ±z.</p>
+                                <p style='font-size: 12px; color: #888;'>Bu mesaj otomatik olarak gÃ¶nderilmiÅŸtir.</p>
+                            </div>";
+
+                        await _emailService.SendEmailAsync(u.Email, subject, body);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Mail hatasÄ± akÄ±ÅŸÄ± bozmamalÄ±
+                    Console.WriteLine($"Mail gÃ¶nderim hatasÄ±: {ex.Message}");
+                }
+            }
+            else 
+            {
+                // Kritik seviye aÅŸÄ±lmadÄ±, iÅŸlem yok.
+            }
         }
     }
 }

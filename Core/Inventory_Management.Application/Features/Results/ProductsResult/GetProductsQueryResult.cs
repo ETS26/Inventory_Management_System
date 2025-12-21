@@ -12,5 +12,7 @@ namespace Inventory_Management.Application.Features.Results.ProductsResult
         public string ImageURL { get; set; }
         public string ProductName { get; set; }
         public string Description { get; set; }
+        public string CategoryName { get; set; } // Eklenen alan
+        public string UnitTypeName { get; set; } // Eklenen alan
     }
 }

@@ -39,8 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         } else {
-            // Sanitize text to prevent HTML injection
-            const sanitizedText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            // Sanitize text to prevent HTML injection and convert newlines to <br> and parse markdown
+            let sanitizedText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            sanitizedText = sanitizedText.replace(/(?:\r\n|\r|\n)/g, '<br>');
+            sanitizedText = sanitizedText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
             content = `<div class="message-content">${sanitizedText}</div>`;
         }
 
@@ -125,7 +127,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Directly create message elements without pushing to history again
                 const messageElement = document.createElement('div');
                 messageElement.classList.add('message', msg.sender);
-                const sanitizedText = msg.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                let sanitizedText = msg.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                sanitizedText = sanitizedText.replace(/(?:\r\n|\r|\n)/g, '<br>');
+                sanitizedText = sanitizedText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
                 const content = `<div class="message-content">${sanitizedText}</div>`;
                 const avatar = `<div class="message-avatar"><i class="fas ${msg.sender === 'user' ? 'fa-user' : 'fa-robot'}"></i></div>`;
                 messageElement.innerHTML = `${avatar}${content}`;

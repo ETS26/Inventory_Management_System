@@ -37,6 +37,7 @@ try
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<Inventory_Management.Domain.Common.ICurrentUserService, Inventory_Management.WebApi.Services.CurrentUserService>();
+    builder.Services.AddTransient<Inventory_Management.Application.Interfaces.IEmailService, Inventory_Management.WebApi.Services.EmailService>();
 
     // --- MediatR ---
     builder.Services.AddMediatR(cfg =>

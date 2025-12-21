@@ -66,5 +66,12 @@ namespace Inventory_Management.WebApi.Controllers
             var result = await _mediator.Send(new GetSuppliersCalendarQuery());
             return Ok(result);
         }
+
+        [HttpPost("send-order")]
+        public async Task<IActionResult> SendOrder(SendOrderEmailCommand command)
+        {
+            await _mediator.Send(command);
+            return Ok("Sipariş maili başarıyla gönderildi.");
+        }
     }
   }
