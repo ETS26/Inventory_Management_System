@@ -28,6 +28,13 @@
             height: 250px;
             width: 100%;
         }
+
+        .border-purple {
+            border-left-color: #6f42c1 !important;
+        }
+        .text-purple {
+            color: #6f42c1 !important;
+        }
     </style>
 </head>
 <body>
@@ -101,13 +108,63 @@
 
             <div class="container-fluid px-4 py-4">
 
+                <!-- 1. Satır: Finansal ve Ticari Özet -->
                 <div class="row g-3 mb-4">
                     <div class="col-md-3">
                         <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-primary">
                             <div>
                                 <p class="text-muted mb-1 fw-bold small text-uppercase">Toplam Stok Değeri</p>
-                                <h3 class="fs-3 fw-bold text-dark mb-0">$0</h3>
+                                <h3 class="fs-3 fw-bold text-dark mb-0" id="totalInventoryValue">₺0</h3>
                                 <p class="text-success small mb-0 fw-bold"><i class="fas fa-arrow-up"></i> +0% geçen ay</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-success">
+                            <div>
+                                <p class="text-muted mb-1 fw-bold small text-uppercase">AYLIK ALIŞ / SATIŞ</p>
+                                <h3 class="fs-5 fw-bold text-dark mb-0" id="monthlyTrade">₺0 / ₺0</h3>
+                                <p class="text-success small mb-0 fw-bold" id="monthlyDiff">Kar: ₺0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-purple">
+                            <div>
+                                <p class="text-purple mb-1 fw-bold small text-uppercase">HAFTALIK ALIŞ / SATIŞ</p>
+                                <h3 class="fs-5 fw-bold text-dark mb-0" id="weeklyTrade">₺0 / ₺0</h3>
+                                <p class="text-muted small mb-0 fw-bold" id="weeklyDiff">Kar: ₺0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-info">
+                            <div>
+                                <p class="text-info mb-1 fw-bold small text-uppercase">GÜNLÜK ALIŞ / SATIŞ</p>
+                                <h3 class="fs-5 fw-bold text-dark mb-0" id="dailyTrade">₺0 / ₺0</h3>
+                                <p class="text-success small mb-0 fw-bold" id="dailyDiff">Kar: ₺0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Satır: Operasyonel Özet -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-warning">
+                            <div>
+                                <p class="text-muted mb-1 fw-bold small text-uppercase">Tedarikçiler</p>
+                                <h3 class="fs-3 fw-bold text-dark mb-0" id="activeSuppliers">0</h3>
+                                <p class="text-muted small mb-0">Aktif partnerler</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-secondary">
+                            <div>
+                                <p class="text-secondary mb-1 fw-bold small text-uppercase">HAFTALIK SİPARİŞ</p>
+                                <h3 class="fs-3 fw-bold text-dark mb-0" id="weeklyExpectedOrders">0</h3>
+                                <p class="text-muted small mb-0">Teslimat bekleniyor</p>
                             </div>
                         </div>
                     </div>
@@ -121,58 +178,11 @@
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-warning">
+                        <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-primary">
                             <div>
-                                <p class="text-muted mb-1 fw-bold small text-uppercase">Tedarikçiler</p>
-                                <h3 class="fs-3 fw-bold text-dark mb-0">24</h3>
-                                <p class="text-muted small mb-0">Aktif partnerler</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-success">
-                            <div>
-                                <p class="text-muted mb-1 fw-bold small text-uppercase">Aylık Satış</p>
-                                <h3 class="fs-3 fw-bold text-dark mb-0">$48,920</h3>
-                                <p class="text-success small mb-0 fw-bold"><i class="fas fa-arrow-up"></i> +8% geçen ay</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-3">
-                            <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-info">
-                                <div>
-                                    <p class="text-info mb-1 fw-bold small text-uppercase">GÜNLÜK SATIŞ</p>
-                                    <h3 class="fs-3 fw-bold text-dark mb-0" id="dailySales">$2,450</h3>
-                                    <p class="text-success small mb-0 fw-bold"><i class="fas fa-arrow-up"></i> +5% dünden</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-secondary">
-                                <div>
-                                    <p class="text-secondary mb-1 fw-bold small text-uppercase">HAFTALIK BEKLENEN SİPARİŞ</p>
-                                    <h3 class="fs-3 fw-bold text-dark mb-0" id="weeklyExpectedOrders">8</h3>
-                                    <p class="text-muted small mb-0">Teslimat bekleniyor</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-danger">
-                                <div>
-                                    <p class="text-danger mb-1 fw-bold small text-uppercase">İADE ORANI</p>
-                                    <h3 class="fs-3 fw-bold text-dark mb-0">%1.2</h3>
-                                    <p class="text-danger small mb-0 fw-bold"><i class="fas fa-arrow-up"></i> +0.2% artış</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="p-4 bg-white shadow-sm rounded-4 h-100 card-hover border-start border-4 border-primary">
-                                <div>
-                                    <p class="text-primary mb-1 fw-bold small text-uppercase">ORT. STOK SÜRESİ</p>
-                                    <h3 class="fs-3 fw-bold text-dark mb-0">14 Gün</h3>
-                                    <p class="text-success small mb-0 fw-bold"><i class="fas fa-arrow-down"></i> -2 gün (Hızlandı)</p>
-                                </div>
+                                <p class="text-primary mb-1 fw-bold small text-uppercase">SKT'si Geçmiş Ürünler</p>
+                                <h3 class="fs-3 fw-bold text-dark mb-0" id="expiredCount">0</h3>
+                                <p class="text-primary small mb-0 fw-bold" id="expiredStatus">İmha/İade Gerekli</p>
                             </div>
                         </div>
                     </div>

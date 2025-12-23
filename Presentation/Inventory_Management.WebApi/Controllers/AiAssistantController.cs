@@ -19,10 +19,11 @@ using Inventory_Management.Application.Features.Queries.Stock_MovementsQuery;
 using Inventory_Management.Application.Features.Queries.InventoriesQuery;
 using Inventory_Management.Application.Features.Commands.InventoriesCommand;
 using Inventory_Management.Application.Features.Commands.SuppliersCommand;
+using Inventory_Management.Application.Features.Queries.Delivery_RulesQuery;
+using Inventory_Management.Application.Features.Commands.Delivery_RulesCommand;
 using Inventory_Management.Application.Features.Commands.Unit_TypesCommand;
 using Inventory_Management.Domain.Common;
 using Inventory_Management.Application.Features.Queries.SuppliersQuery;
-using Inventory_Management.Application.Features.Queries.Delivery_RulesQuery;
 
 namespace Inventory_Management.WebApi.Controllers
 {
@@ -75,7 +76,10 @@ namespace Inventory_Management.WebApi.Controllers
         [JsonPropertyName("categoryName")] public string CategoryName { get; set; }
         [JsonPropertyName("productName")] public string ProductName { get; set; }
         [JsonPropertyName("supplierName")] public string SupplierName { get; set; }
+        [JsonPropertyName("ruleName")] public string RuleName { get; set; }
         [JsonPropertyName("moveTypeName")] public string MoveTypeName { get; set; }
+        [JsonPropertyName("moveTypeId")] public string MoveTypeId { get; set; }
+        [JsonPropertyName("inventoryId")] public string InventoryId { get; set; }
         [JsonPropertyName("quantity")] public int? Quantity { get; set; }
         [JsonPropertyName("quantityFilterType")] public string QuantityFilterType { get; set; }
         [JsonPropertyName("dateRange")] public string DateRange { get; set; }
@@ -140,10 +144,13 @@ namespace Inventory_Management.WebApi.Controllers
 # TEMEL KURALLAR
 1. 'kaç', 'adet', 'sayı', 'toplam', 'değeri ne' -> CALCULATE
 2. 'listele', 'göster', 'getir', 'bakalım', 'programı ne', 'takvimi' -> GET
-3. 'ekle', 'yeni', 'oluştur', 'girişi yap', 'çıkışı yap' -> POST (Eksik bilgi varsa sor!)
+3. 'ekle', 'yeni', 'oluştur', 'girişi yap', 'çıkışı yap' -> POST
 4. 'güncelle', 'değiştir', 'fiyatını yap', 'adını yap' -> UPDATE
 5. 'sil', 'kaldır', 'pasif et' -> DELETE
-6. Anlamadıysan ""Komutu anlayamadım"" deme, ""Daha farklı bir şekilde ifade edebilir misiniz?"" gibi bir soru sor. Asla JSON oluşturma.
+6. 'stock in', 'giriş', 'alım', 'geldi' -> 'stock in' ; 'stock out', 'çıkış', 'satış', 'gitti' -> 'stock out' olarak algıla. Veritabanında SADECE 'stock in' ve 'stock out' var.
+7. ÖNEMLİ: Eğer kullanıcı virgülle ayrılmış (CSV benzeri) bir formatta veri girerse (Örn: 'Ürün,Fiyat,Miktar...') ASLA soru sorma. Eksik bilgi olsa bile tahmin et ve JSON üret.
+8. TOPLU İŞLEM: Eğer kullanıcı '+' işaretiyle ayrılmış birden fazla kayıt girerse (Örn: 'A,B,C + X,Y,Z'), payload içinde 'items' dizisi oluştur.
+9. RENK DÖNÜŞÜMÜ: Kullanıcı renk ismi verirse (mavi, kırmızı, yeşil, sarı, turuncu, mor, gri, siyah, beyaz vb.) bunu mutlaka HEX koduna çevir. (Örn: 'mavi' -> '#0000FF', 'kırmızı' -> '#FF0000', 'yeşil' -> '#008000', 'sarı' -> '#FFFF00', 'turuncu' -> '#FFA500').
 
 # ENTITY (VARLIK) EŞLEŞTİRMELERİ (Buna kesinlikle uy!)
 - 'ürün', 'malzeme', 'tanım' -> 'Product'
@@ -194,21 +201,21 @@ namespace Inventory_Management.WebApi.Controllers
 33. ""yeni tedarikçi kaydet"" -> (Sohbet başlat) ""Tedarikçi firmanın tam adı nedir?""
 34. ""yeni kategori oluştur"" -> (Sohbet başlat) ""Kategorinin adı ne olacak?""
 35. ""Logitech için yeni teslimat kuralı ekle"" -> (Sohbet başlat) ""Kuralın adı ne olsun? (Örn: Haftalık Klavye Sevkiyatı)""
-36. ""10 adet kola satıldı"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""productName"": ""kola"", ""quantity"": 10, ""moveTypeName"": ""Çıkış"" } }
-37. ""Yeni ürün: 'Gaming Mouse', Barkod: '12345', Kategori: 'Elektronik', Birim: 'Adet'"" -> { ""operation"": ""POST"", ""entity"": ""Product"", ""payload"": { ""productName"": ""Gaming Mouse"", ""barcode"": ""12345"", ""categoryName"": ""Elektronik"", ""unitTypeName"": ""Adet"" } }
-38. ""Pınar firmasından 5 koli süt geldi, alış fiyatı 200 TL"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""productName"": ""Süt"", ""quantity"": 5, ""unitTypeName"": ""Koli"", ""supplierName"": ""Pınar"", ""purchasePrice"": 200, ""moveTypeName"": ""Giriş"" } }
-39. ""Yeni birim tipi ekle: Kasa"" -> { ""operation"": ""POST"", ""entity"": ""Unit_Type"", ""payload"": { ""unitName"": ""Kasa"" } }
-40. ""'Test' adında yeni kategori oluştur"" -> { ""operation"": ""POST"", ""entity"": ""Category"", ""payload"": { ""categoryName"": ""Test"" } }
-41. ""1 adet bozuk monitörü iade olarak giriş yap"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""productName"": ""monitör"", ""quantity"": 1, ""moveTypeName"": ""İade Girişi"" } }
-42. ""Yeni firma: 'Süper Lojistik', İletişim: 'Mehmet Kaplan', E-posta: 'm.kaplan@super.com', Telefon: '05051112233', Adres: 'Lojistik Cad. No: 5, İstanbul'"" -> { ""operation"": ""POST"", ""entity"": ""Supplier"", ""payload"": { ""supplierName"": ""Süper Lojistik"", ""contactPerson"": ""Mehmet Kaplan"", ""email"": ""m.kaplan@super.com"", ""phoneNumber"": ""05051112233"", ""address"": ""Lojistik Cad. No: 5, İstanbul"" } }
-43. ""'Gıda' kategorisi oluştur, açıklaması 'Tüketilebilir ürünler' olsun"" -> { ""operation"": ""POST"", ""entity"": ""Category"", ""payload"": { ""categoryName"": ""Gıda"", ""description"": ""Tüketilebilir ürünler"" } }
-44. ""Süper Lojistik için aylık teslimat kuralı oluştur. Ayın 15'inde saat 10:00'da"" -> { ""operation"": ""POST"", ""entity"": ""Delivery_Rule"", ""payload"": { ""supplierName"": ""Süper Lojistik"", ""ruleName"": ""Aylık Genel Sevkiyat"", ""frequency"": ""Monthly"", ""daysOfMonth"": ""15"", ""arrivalTime"": ""10:00"" } }
-45. ""Sayım fazlası olarak 2 adet klavye girişi yap"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""productName"": ""klavye"", ""quantity"": 2, ""moveTypeName"": ""Sayım Fazlası"" } }
-46. ""Yeni bir ürün tanımlamak istiyorum"" -> (Sohbet başlat) ""Tabii, ürünün adı nedir?""
-47. ""Stoktan ürün düşelim"" -> (Sohbet başlat) ""Hangi üründen kaç adet düşülecek?""
-48. ""Yeni bir firma ekle"" -> (Sohbet başlat) ""Harika, firma adı nedir?""
-49. ""10 paket makarna için stok girişi yap"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""productName"": ""Makarna"", ""quantity"": 10, ""moveTypeName"": ""Giriş"" } }
-50. ""Bir sevkiyat kuralı tanımlayalım"" -> (Sohbet başlat) ""Hangi tedarikçi için kural tanımlanacak?""
+36. ""Kablosuz Klavye,869000000784,Elektronik,UNIT"" -> { ""operation"": ""POST"", ""entity"": ""Product"", ""payload"": { ""productName"": ""Kablosuz Klavye"", ""barcode"": ""869000000784"", ""categoryName"": ""Elektronik"", ""unitTypeName"": ""UNIT"" } }
+37. ""Kablosuz Klavye,869000000784,Elektronik,UNIT,https://imageURL,ürün çok güzel"" -> { ""operation"": ""POST"", ""entity"": ""Product"", ""payload"": { ""productName"": ""Kablosuz Klavye"", ""barcode"": ""869000000784"", ""categoryName"": ""Elektronik"", ""unitTypeName"": ""UNIT"", ""imageURL"": ""https://imageURL"", ""description"": ""ürün çok güzel"" } }
+38. ""Kırmızı mercimek,Yusuf Gıda,stock in,5"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""productName"": ""Kırmızı mercimek"", ""supplierName"": ""Yusuf Gıda"", ""moveTypeName"": ""stock in"", ""quantity"": 5 } }
+39. ""Kırmızı mercimek,Yusuf Gıda,stock in,5,kaliteli ürün"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""productName"": ""Kırmızı mercimek"", ""supplierName"": ""Yusuf Gıda"", ""moveTypeName"": ""stock in"", ""quantity"": 5, ""description"": ""kaliteli ürün"" } }
+40. ""Kıyma 1KG,150,300,15,31.12.2025,Yusuf Gıda,stock in,30"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""productName"": ""Kıyma 1KG"", ""purchasePrice"": 150, ""salePrice"": 300, ""criticalStockQuantity"": 15, ""expirationDate"": ""31.12.2025"", ""supplierName"": ""Yusuf Gıda"", ""moveTypeName"": ""stock in"", ""quantity"": 30 } }
+41. ""Patates 1KG x 10,20,50,30,15.01.2026,Yusuf Gıda,stock in,50"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""productName"": ""Patates 1KG x 10"", ""purchasePrice"": 20, ""salePrice"": 50, ""criticalStockQuantity"": 30, ""expirationDate"": ""15.01.2026"", ""supplierName"": ""Yusuf Gıda"", ""moveTypeName"": ""stock in"", ""quantity"": 50 } }
+42. ""Kıyma 1KG,150,300,15,432436-08,31.12.2025,Yusuf Gıda,stock in,30,kaliteli kıyma"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""productName"": ""Kıyma 1KG"", ""purchasePrice"": 150, ""salePrice"": 300, ""criticalStockQuantity"": 15, ""batchNumber"": ""432436-08"", ""expirationDate"": ""31.12.2025"", ""supplierName"": ""Yusuf Gıda"", ""moveTypeName"": ""stock in"", ""quantity"": 30, ""description"": ""kaliteli kıyma"" } }
+43. ""Yeni birim tipi ekle: Kasa"" -> { ""operation"": ""POST"", ""entity"": ""Unit_Type"", ""payload"": { ""unitName"": ""Kasa"" } }
+44. ""'Test' adında yeni kategori oluştur"" -> { ""operation"": ""POST"", ""entity"": ""Category"", ""payload"": { ""categoryName"": ""Test"" } }
+45. ""Klavye,123,Elek,Adet + Mouse,456,Elek,Adet"" -> { ""operation"": ""POST"", ""entity"": ""Product"", ""payload"": { ""items"": [ { ""productName"": ""Klavye"", ""barcode"": ""123"", ""categoryName"": ""Elek"", ""unitTypeName"": ""Adet"" }, { ""productName"": ""Mouse"", ""barcode"": ""456"", ""categoryName"": ""Elek"", ""unitTypeName"": ""Adet"" } ] } }
+46. ""Un,Yusuf,stock in,5 + Şeker,Yusuf,stock in,10"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""items"": [ { ""productName"": ""Un"", ""supplierName"": ""Yusuf"", ""moveTypeName"": ""stock in"", ""quantity"": 5 }, { ""productName"": ""Şeker"", ""supplierName"": ""Yusuf"", ""moveTypeName"": ""stock in"", ""quantity"": 10 } ] } }
+47. ""Mehmet Manav,Mehmet Yılmaz,5536860912,abc@gmail.com,bucak/burdur + Ceylan Pastanesi,Ceylan Yıldırım,5556321247,cba@gmail.com,ankara"" -> { ""operation"": ""POST"", ""entity"": ""Supplier"", ""payload"": { ""items"": [ { ""supplierName"": ""Mehmet Manav"", ""contactPerson"": ""Mehmet Yılmaz"", ""phoneNumber"": ""5536860912"", ""email"": ""abc@gmail.com"", ""address"": ""bucak/burdur"" }, { ""supplierName"": ""Ceylan Pastanesi"", ""contactPerson"": ""Ceylan Yıldırım"", ""phoneNumber"": ""5556321247"", ""email"": ""cba@gmail.com"", ""address"": ""ankara"" } ] } }
+48. ""kasa+çuval"" -> { ""operation"": ""POST"", ""entity"": ""Unit_Type"", ""payload"": { ""items"": [ { ""unitName"": ""kasa"" }, { ""unitName"": ""çuval"" } ] } }
+49. ""Yusuf Gıda,Ekmek Teslimatı,01.01.2026,30.04.2026,08.30,haftalık,2,2,1;3;5,mavi + Yusuf Gıda,Peynir Teslimatı,01.01.2026,30.04.2026,08.30,haftalık,2,3,2;4;6,yeşil"" -> { ""operation"": ""POST"", ""entity"": ""Delivery_Rule"", ""payload"": { ""items"": [ { ""supplierName"": ""Yusuf Gıda"", ""ruleName"": ""Ekmek Teslimatı"", ""startDate"": ""01.01.2026"", ""endDate"": ""30.04.2026"", ""arrivalTime"": ""08.30"", ""frequency"": ""Weekly"", ""interval"": 2, ""leadTimeDays"": 2, ""daysOfWeek"": ""1,3,5"", ""calendarColor"": ""#0000FF"" }, { ""supplierName"": ""Yusuf Gıda"", ""ruleName"": ""Peynir Teslimatı"", ""startDate"": ""01.01.2026"", ""endDate"": ""30.04.2026"", ""arrivalTime"": ""08.30"", ""frequency"": ""Weekly"", ""interval"": 2, ""leadTimeDays"": 3, ""daysOfWeek"": ""2,4,6"", ""calendarColor"": ""#008000"" } ] } }
+50. ""Sayım fazlası olarak 2 adet klavye girişi yap"" -> { ""operation"": ""POST"", ""entity"": ""Stock_Movement"", ""payload"": { ""productName"": ""klavye"", ""quantity"": 2, ""moveTypeName"": ""Sayım Fazlası"" } }
 
 ## UPDATE (Güncelleme) Senaryoları (25 Adet)
 51. ""Kola'nın satış fiyatını 15 TL yap"" -> { ""operation"": ""UPDATE"", ""entity"": ""Inventory"", ""filters"": { ""productName"": ""Kola"" }, ""payload"": { ""salePrice"": 15 } }
@@ -236,6 +243,14 @@ namespace Inventory_Management.WebApi.Controllers
 73. ""Pasif olan tüm tedarikçileri tekrar aktif et"" -> { ""operation"": ""UPDATE"", ""entity"": ""Supplier"", ""filters"": { ""isActive"": false }, ""payload"": { ""isActive"": true } }
 74. ""'Günlük Süt' kuralının teslimat saatini 08:30 yap"" -> { ""operation"": ""UPDATE"", ""entity"": ""Delivery_Rule"", ""filters"":{ ""ruleName"": ""Günlük Süt"" }, ""payload"": { ""arrivalTime"": ""08:30"" } }
 75. ""Envanterdeki tüm ürünlerin alış fiyatını sıfırla"" -> { ""operation"": ""UPDATE"", ""entity"": ""Inventory"", ""payload"": { ""purchasePrice"": 0 } }
+75a. ""Kola 20 TL, Fanta 25 TL olsun"" -> { ""operation"": ""UPDATE"", ""entity"": ""Inventory"", ""payload"": { ""items"": [ { ""productName"": ""Kola"", ""salePrice"": 20 }, { ""productName"": ""Fanta"", ""salePrice"": 25 } ] } }
+75b. ""Ahmet 5551234567, Mehmet 5557654321 olsun"" -> { ""operation"": ""UPDATE"", ""entity"": ""Supplier"", ""payload"": { ""items"": [ { ""supplierName"": ""Ahmet"", ""phoneNumber"": ""5551234567"" }, { ""supplierName"": ""Mehmet"", ""phoneNumber"": ""5557654321"" } ] } }
+75c. ""ID'si 123 olan hareketi güncelle: adet 50 olsun"" -> { ""operation"": ""UPDATE"", ""entity"": ""Stock_Movement"", ""filters"": { ""id"": ""123"" }, ""payload"": { ""quantity"": 50 } }
+75d. ""Domatesin birim tipini Kilo yap"" -> { ""operation"": ""UPDATE"", ""entity"": ""Product"", ""filters"": { ""productName"": ""Domates"" }, ""payload"": { ""unitTypeName"": ""Kilo"" } }
+75e. ""'Adet' birim ismini 'Tane' olarak değiştir"" -> { ""operation"": ""UPDATE"", ""entity"": ""Unit_Type"", ""filters"": { ""name"": ""Adet"" }, ""payload"": { ""unitName"": ""Tane"" } }
+75f. ""Marul kategorisini Bakliyat yap"" -> { ""operation"": ""UPDATE"", ""entity"": ""Product"", ""filters"": { ""productName"": ""Marul"" }, ""payload"": { ""categoryName"": ""Bakliyat"" } }
+75g. ""Bakliyat kategorisinin adını Kuru Gıda yap"" -> { ""operation"": ""UPDATE"", ""entity"": ""Category"", ""filters"": { ""name"": ""Bakliyat"" }, ""payload"": { ""categoryName"": ""Kuru Gıda"" } }
+75h. ""414903e3-de77-48bf-8c5e-725422518caf işlemini stock in yap"" -> { ""operation"": ""UPDATE"", ""entity"": ""Stock_Movement"", ""filters"": { ""id"": ""414903e3-de77-48bf-8c5e-725422518caf"" }, ""payload"": { ""moveTypeName"": ""stock in"" } }
 
 ## DELETE (Silme) Senaryoları (10 Adet)
 76. ""Kırık sandalyeyi envanterden düş"" -> { ""operation"": ""DELETE"", ""entity"": ""Inventory"", ""filters"": { ""productName"": ""Kırık sandalye"" } }
@@ -248,6 +263,8 @@ namespace Inventory_Management.WebApi.Controllers
 83. ""'XYZ Lojistik' firmasını pasif yap"" -> { ""operation"": ""UPDATE"", ""entity"": ""Supplier"", ""filters"": { ""name"": ""XYZ Lojistik"" }, ""payload"": { ""isActive"": false } }
 84. ""Tüm 'Eski' ile başlayan ürünleri sil"" -> { ""operation"": ""DELETE"", ""entity"": ""Product"", ""filters"": { ""nameStartsWith"": ""Eski"" } }
 85. ""'Koli' ve 'Paket' birim tiplerini sil"" -> { ""operation"": ""DELETE"", ""entity"": ""Unit_Type"", ""filters"": { ""names"": [""Koli"", ""Paket""] } }
+85a. ""Eski Masa ve Kırık Sandalye ürünlerini sil"" -> { ""operation"": ""DELETE"", ""entity"": ""Product"", ""payload"": { ""items"": [ { ""productName"": ""Eski Masa"" }, { ""productName"": ""Kırık Sandalye"" } ] } }
+85b. ""Hatalı girişi sil (ID: 999)"" -> { ""operation"": ""DELETE"", ""entity"": ""Stock_Movement"", ""filters"": { ""id"": ""999"" } }
 
 ## CALCULATE (Hesaplama) Senaryoları (15 Adet)
 86. ""toplam envanter değeri ne kadar?"" -> { ""operation"": ""CALCULATE"", ""entity"": ""InventoryTotalValue"" }
@@ -388,20 +405,85 @@ namespace Inventory_Management.WebApi.Controllers
                         case "product":
                             if (command.Payload.HasValue)
                             {
-                                var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(command.Payload.Value.GetRawText());
-                                string productName = payload.ContainsKey("productName") ? payload["productName"].GetString() : null;
-                                string barcode = payload.ContainsKey("barcode") ? payload["barcode"].GetString() :  null;
+                                var root = command.Payload.Value;
+                                var items = new List<JsonElement>();
 
-                                if (string.IsNullOrWhiteSpace(productName) || string.IsNullOrWhiteSpace(barcode))
+                                if (root.TryGetProperty("items", out JsonElement itemsElement) && itemsElement.ValueKind == JsonValueKind.Array)
                                 {
-                                    responseText = "Ürün oluşturmak için hem ürün adı hem de barkod gereklidir.";
-                                    break;
+                                    foreach (var item in itemsElement.EnumerateArray()) items.Add(item);
+                                }
+                                else
+                                {
+                                    items.Add(root);
                                 }
 
-                                var createCommand = new CreateProductsCommand { ProductName = productName, Barcode = barcode };
-                                await _mediator.Send(createCommand);
+                                var sb = new StringBuilder();
+                                int successCount = 0;
+
+                                foreach (var item in items)
+                                {
+                                    var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(item.GetRawText());
+                                    string productName = payload.ContainsKey("productName") ? payload["productName"].GetString() : null;
+                                    string barcode = payload.ContainsKey("barcode") ? payload["barcode"].GetString() : null;
+                                    string categoryName = payload.ContainsKey("categoryName") ? payload["categoryName"].GetString() : null;
+                                    string unitTypeName = payload.ContainsKey("unitTypeName") ? payload["unitTypeName"].GetString() : null;
+                                    string imageUrl = payload.ContainsKey("imageURL") ? payload["imageURL"].GetString() : null;
+                                    string description = payload.ContainsKey("description") ? payload["description"].GetString() : null;
+
+                                    if (string.IsNullOrWhiteSpace(productName) || string.IsNullOrWhiteSpace(barcode))
+                                    {
+                                        sb.AppendLine($"❌ Hata: Ürün adı ve barkod zorunludur. (Gelen: {productName})");
+                                        continue;
+                                    }
+
+                                    Guid categoryId = Guid.Empty;
+                                    Guid unitTypeId = Guid.Empty;
+
+                                    if (!string.IsNullOrWhiteSpace(categoryName))
+                                    {
+                                        var category = await _context.Categories.FirstOrDefaultAsync(c => c.CategoryName.ToLower() == categoryName.ToLower());
+                                        if (category == null)
+                                        {
+                                            category = new Categories { Id = Guid.NewGuid(), CategoryName = categoryName, IsActive = true, CreatedAt = DateTime.UtcNow.AddHours(3) };
+                                            _context.Categories.Add(category);
+                                            await _context.SaveChangesAsync();
+                                        }
+                                        categoryId = category.Id;
+                                    }
+
+                                    if (!string.IsNullOrWhiteSpace(unitTypeName))
+                                    {
+                                        var unitType = await _context.Unit_Types.FirstOrDefaultAsync(u => u.UnitName.ToLower() == unitTypeName.ToLower());
+                                        if (unitType == null)
+                                        {
+                                            unitType = new Unit_Types { Id = Guid.NewGuid(), UnitName = unitTypeName, IsActive = true, CreatedAt = DateTime.UtcNow.AddHours(3) };
+                                            _context.Unit_Types.Add(unitType);
+                                            await _context.SaveChangesAsync();
+                                        }
+                                        unitTypeId = unitType.Id;
+                                    }
+
+                                    var createCommand = new CreateProductsCommand
+                                    {
+                                        ProductName = productName,
+                                        Barcode = barcode,
+                                        CategoryId = categoryId,
+                                        UnitTypeId = unitTypeId,
+                                        ImageURL = imageUrl,
+                                        Description = description
+                                    };
+                                    await _mediator.Send(createCommand);
+                                    successCount++;
+                                    sb.AppendLine($"✅ '{productName}' eklendi.");
+                                }
+
                                 session.CollectedData.Clear();
-                                responseText = $"✅ '{productName}' ürünü başarıyla eklendi! (Barkod: {barcode})";
+                                responseText = items.Count > 1
+                                    ? $"Toplu Ürün Ekleme Sonucu:\n{sb}"
+                                    : sb.ToString().Trim();
+                                
+                                if (successCount == 0 && items.Count > 0 && string.IsNullOrEmpty(responseText))
+                                     responseText = "Hiçbir ürün eklenemedi.";
                             }
                             break;
 
@@ -424,25 +506,52 @@ namespace Inventory_Management.WebApi.Controllers
                         case "unit_type":
                             if (command.Payload.HasValue)
                             {
-                                var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(command.Payload.Value.GetRawText());
-                                string unitName = payload.ContainsKey("unitName") ? payload["unitName"].GetString() : null;
+                                var root = command.Payload.Value;
+                                var items = new List<JsonElement>();
 
-                                if (string.IsNullOrWhiteSpace(unitName))
+                                if (root.TryGetProperty("items", out JsonElement itemsElement) && itemsElement.ValueKind == JsonValueKind.Array)
                                 {
-                                    responseText = "Birim tipi adı gerekli.";
-                                    break;
+                                    foreach (var item in itemsElement.EnumerateArray()) items.Add(item);
+                                }
+                                else
+                                {
+                                    items.Add(root);
                                 }
 
-                                var unitType = new Unit_Types
+                                var sb = new StringBuilder();
+                                int successCount = 0;
+
+                                foreach (var item in items)
                                 {
-                                    Id = Guid.NewGuid(),
-                                    UnitName = unitName,
-                                    IsActive = true,
-                                    CreatedAt = DateTime.UtcNow
-                                };
-                                _context.Unit_Types.Add(unitType);
-                                await _context.SaveChangesAsync();
-                                responseText = $"✅ '{unitName}' birim tipi başarıyla oluşturuldu!";
+                                    var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(item.GetRawText());
+                                    string unitName = payload.ContainsKey("unitName") ? payload["unitName"].GetString() : null;
+
+                                    if (string.IsNullOrWhiteSpace(unitName))
+                                    {
+                                        sb.AppendLine("❌ Hata: Birim tipi adı gerekli.");
+                                        continue;
+                                    }
+
+                                    // Check duplication if needed, but simple add for now
+                                    var unitType = new Unit_Types
+                                    {
+                                        Id = Guid.NewGuid(),
+                                        UnitName = unitName,
+                                        IsActive = true,
+                                        CreatedAt = DateTime.UtcNow
+                                    };
+                                    _context.Unit_Types.Add(unitType);
+                                    await _context.SaveChangesAsync();
+                                    successCount++;
+                                    sb.AppendLine($"✅ '{unitName}' eklendi.");
+                                }
+                                
+                                responseText = items.Count > 1 
+                                    ? $"Toplu Birim Ekleme Sonucu:\n{sb}" 
+                                    : sb.ToString().Trim();
+
+                                if (successCount == 0 && items.Count > 0 && string.IsNullOrEmpty(responseText))
+                                     responseText = "Hiçbir birim tipi eklenemedi.";
                             }
                             break;
 
@@ -450,127 +559,238 @@ namespace Inventory_Management.WebApi.Controllers
                         case "supplier":
                             if (command.Payload.HasValue)
                             {
-                                var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(command.Payload.Value.GetRawText());
+                                var root = command.Payload.Value;
+                                var items = new List<JsonElement>();
 
-                                string supplierName = payload.ContainsKey("supplierName") ? payload["supplierName"].GetString() : null;
-                                string contactPerson = payload.ContainsKey("contactPerson") ? payload["contactPerson"].GetString() : null;
-                                string email = payload.ContainsKey("email") ? payload["email"].GetString() : null;
-                                string phoneNumber = payload.ContainsKey("phoneNumber") ? payload["phoneNumber"].GetString() : null;
-                                string address = payload.ContainsKey("address") ? payload["address"].GetString() : null;
-
-                                if (string.IsNullOrWhiteSpace(supplierName))
+                                if (root.TryGetProperty("items", out JsonElement itemsElement) && itemsElement.ValueKind == JsonValueKind.Array)
                                 {
-                                    responseText = "Tedarikçi adı gerekli.";
-                                    break;
+                                    foreach (var item in itemsElement.EnumerateArray()) items.Add(item);
+                                }
+                                else
+                                {
+                                    items.Add(root);
                                 }
 
-                                var createSupplierCmd = new CreateSuppliersCommand
-                                {
-                                    SupplierName = supplierName,
-                                    ContactPerson = contactPerson,
-                                    Email = email,
-                                    PhoneNumber = phoneNumber,
-                                    Address = address
-                                };
+                                var sb = new StringBuilder();
+                                int successCount = 0;
 
-                                await _mediator.Send(createSupplierCmd);
-                                responseText = $"✅ '{supplierName}' tedarikçisi başarıyla eklendi!";
+                                foreach (var item in items)
+                                {
+                                    var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(item.GetRawText());
+
+                                    string supplierName = payload.ContainsKey("supplierName") ? payload["supplierName"].GetString() : null;
+                                    string contactPerson = payload.ContainsKey("contactPerson") ? payload["contactPerson"].GetString() : null;
+                                    string email = payload.ContainsKey("email") ? payload["email"].GetString() : null;
+                                    string phoneNumber = payload.ContainsKey("phoneNumber") ? payload["phoneNumber"].GetString() : null;
+                                    string address = payload.ContainsKey("address") ? payload["address"].GetString() : null;
+
+                                    if (string.IsNullOrWhiteSpace(supplierName))
+                                    {
+                                        sb.AppendLine("❌ Hata: Tedarikçi adı gerekli.");
+                                        continue;
+                                    }
+
+                                    var createSupplierCmd = new CreateSuppliersCommand
+                                    {
+                                        SupplierName = supplierName,
+                                        ContactPerson = contactPerson,
+                                        Email = email,
+                                        PhoneNumber = phoneNumber,
+                                        Address = address
+                                    };
+
+                                    await _mediator.Send(createSupplierCmd);
+                                    successCount++;
+                                    sb.AppendLine($"✅ '{supplierName}' eklendi.");
+                                }
+
+                                responseText = items.Count > 1 
+                                    ? $"Toplu Tedarikçi Ekleme Sonucu:\n{sb}" 
+                                    : sb.ToString().Trim();
+
+                                if (successCount == 0 && items.Count > 0 && string.IsNullOrEmpty(responseText))
+                                     responseText = "Hiçbir tedarikçi eklenemedi.";
                             }
                             break;
 
-                        // Stock_Movement (Stok Hareketi) ekleme - Senaryo 36, 37, 38, 41, 45, 49
+                        // Stock_Movement (Stok Hareketi) ekleme
                         case "stock_movement":
                             if (command.Payload.HasValue)
                             {
-                                var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(command.Payload.Value.GetRawText());
+                                var root = command.Payload.Value;
+                                var items = new List<JsonElement>();
 
-                                string productName = payload.ContainsKey("productName") ? payload["productName"].GetString() : null;
-                                int quantity = payload.ContainsKey("quantity") ? payload["quantity"].GetInt32() : 0;
-                                string moveTypeName = payload.ContainsKey("moveTypeName") ? payload["moveTypeName"].GetString() : "Giriş";
-                                string supplierName = payload.ContainsKey("supplierName") ? payload["supplierName"].GetString() : null;
-                                float? purchasePrice = payload.ContainsKey("purchasePrice") ? payload["purchasePrice"].GetSingle() : null;
-
-                                if (string.IsNullOrWhiteSpace(productName) || quantity <= 0)
+                                if (root.TryGetProperty("items", out JsonElement itemsElement) && itemsElement.ValueKind == JsonValueKind.Array)
                                 {
-                                    responseText = "Ürün adı ve miktar gerekli.";
-                                    break;
+                                    foreach (var item in itemsElement.EnumerateArray()) items.Add(item);
+                                }
+                                else
+                                {
+                                    items.Add(root);
                                 }
 
-                                // Ürünü bul
-                                var product = await _context.Products
-                                    .FirstOrDefaultAsync(p => p.ProductName.ToLower().Contains(productName.ToLower()) && p.IsActive);
+                                var sb = new StringBuilder();
+                                int successCount = 0;
 
-                                if (product == null)
+                                foreach (var item in items)
                                 {
-                                    responseText = $"'{productName}' ürünü bulunamadı. Önce ürünü sisteme ekleyin.";
-                                    break;
-                                }
+                                    var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(item.GetRawText());
 
-                                // Envanter kaydını bul veya oluştur
-                                var inventory = await _context.Inventories
-                                    .FirstOrDefaultAsync(i => i.ProductId == product.Id && i.IsActive);
+                                    string productName = payload.ContainsKey("productName") ? payload["productName"].GetString() : null;
+                                    int quantity = payload.ContainsKey("quantity") ? payload["quantity"].GetInt32() : 0;
+                                    string moveTypeName = payload.ContainsKey("moveTypeName") ? payload["moveTypeName"].GetString() : "Giriş";
+                                    string supplierName = payload.ContainsKey("supplierName") ? payload["supplierName"].GetString() : null;
+                                    float? purchasePrice = payload.ContainsKey("purchasePrice") ? payload["purchasePrice"].GetSingle() : null;
+                                    float? salePrice = payload.ContainsKey("salePrice") ? payload["salePrice"].GetSingle() : null;
+                                    int? criticalStockQuantity = payload.ContainsKey("criticalStockQuantity") ? payload["criticalStockQuantity"].GetInt32() : null;
+                                    string expirationDateStr = payload.ContainsKey("expirationDate") ? payload["expirationDate"].GetString() : null;
+                                    string batchNumber = payload.ContainsKey("batchNumber") ? payload["batchNumber"].GetString() : null;
+                                    string description = payload.ContainsKey("description") ? payload["description"].GetString() : null;
 
-                                if (inventory == null)
-                                {
-                                    responseText = $"'{productName}' için envanter kaydı bulunamadı.";
-                                    break;
-                                }
-
-                                // MoveType bul
-                                var moveType = await _context.Move_Types
-                                    .FirstOrDefaultAsync(m => m.MoveType.ToLower().Contains(moveTypeName.ToLower()) && m.IsActive);
-
-                                if (moveType == null)
-                                {
-                                    responseText = $"'{moveTypeName}' hareket tipi bulunamadı.";
-                                    break;
-                                }
-
-                                // Supplier varsa bul
-                                Guid? supplierId = null;
-                                if (!string.IsNullOrWhiteSpace(supplierName))
-                                {
-                                    var supplier = await _context.Suppliers
-                                        .FirstOrDefaultAsync(s => s.SupplierName.ToLower().Contains(supplierName.ToLower()) && s.IsActive);
-                                    supplierId = supplier?.Id;
-                                }
-
-                                // UserId kontrolü
-                                Guid userId = _currentUserService.UserId;
-
-                                // Stok hareketi oluştur
-                                var movement = new Stock_Movements
-                                {
-                                    Id = Guid.NewGuid(),
-                                    InventoryId = inventory.Id,
-                                    Quantity = quantity,
-                                    MoveTypeId = moveType.Id,
-                                    UserId = userId,
-                                    IsActive = true,
-                                    CreatedAt = DateTime.UtcNow
-                                };
-
-                                _context.Stock_Movements.Add(movement);
-
-                                // Stok güncelle (Giriş ise artır, Çıkış ise azalt)
-                                if (moveTypeName.ToLower().Contains("giriş") || moveTypeName.ToLower().Contains("iade") || moveTypeName.ToLower().Contains("sayım fazlası"))
-                                {
-                                    inventory.Quantity += quantity;
-                                    if (purchasePrice.HasValue)
-                                        inventory.PurchasePrice = purchasePrice.Value;
-                                }
-                                else if (moveTypeName.ToLower().Contains("çıkış") || moveTypeName.ToLower().Contains("satış"))
-                                {
-                                    if (inventory.Quantity < quantity)
+                                    if (string.IsNullOrWhiteSpace(productName) || quantity <= 0)
                                     {
-                                        responseText = $"⚠️ Yetersiz stok! '{productName}' için mevcut: {inventory.Quantity}, talep: {quantity}";
-                                        break;
+                                        sb.AppendLine($"❌ Hata: Ürün adı ve miktar gerekli (Miktar pozitif olmalı). Gelen Ürün: {productName}");
+                                        continue;
                                     }
-                                    inventory.Quantity -= quantity;
+
+                                    // Ürünü bul
+                                    var product = await _context.Products
+                                        .FirstOrDefaultAsync(p => p.ProductName.ToLower().Contains(productName.ToLower()) && p.IsActive);
+
+                                    if (product == null)
+                                    {
+                                        sb.AppendLine($"❌ Hata: '{productName}' ürünü bulunamadı. Önce ürünü sisteme ekleyin.");
+                                        continue;
+                                    }
+
+                                    // Envanter kaydını bul veya oluştur
+                                    var inventory = await _context.Inventories
+                                        .FirstOrDefaultAsync(i => i.ProductId == product.Id && i.IsActive);
+
+                                    bool isNewInventory = false;
+                                    if (inventory == null)
+                                    {
+                                        // Yeni envanter oluşturma kontrolü
+                                        if (purchasePrice.HasValue && salePrice.HasValue)
+                                        {
+                                            DateTime expirationDate = DateTime.UtcNow.AddYears(1);
+                                            if (!string.IsNullOrWhiteSpace(expirationDateStr) && DateTime.TryParseExact(expirationDateStr, "dd.MM.yyyy", null, System.Globalization.DateTimeStyles.None, out var parsedDate))
+                                            {
+                                                expirationDate = parsedDate;
+                                            }
+
+                                            inventory = new Inventories
+                                            {
+                                                Id = Guid.NewGuid(),
+                                                ProductId = product.Id,
+                                                CompanyId = _currentUserService.CompanyId ?? Guid.Empty, // CompanyId kontrolü
+                                                Quantity = 0, // Hareket ile artacak
+                                                CriticalStockQuantity = criticalStockQuantity ?? 10,
+                                                PurchasePrice = purchasePrice.Value,
+                                                SalePrice = salePrice.Value,
+                                                ExpirationDate = expirationDate,
+                                                BatchNumber = batchNumber ?? "STD-" + DateTime.Now.ToString("yyyyMMdd"),
+                                                IsActive = true,
+                                                CreatedAt = DateTime.UtcNow
+                                            };
+                                            _context.Inventories.Add(inventory);
+                                            await _context.SaveChangesAsync();
+                                            isNewInventory = true;
+                                        }
+                                        else
+                                        {
+                                            sb.AppendLine($"❌ Hata: '{productName}' için envanter kaydı yok. Yeni kayıt için Alış ve Satış fiyatı zorunludur.");
+                                            continue;
+                                        }
+                                    }
+
+                                    // MoveType bul ve Normalize Et
+                                    string targetMoveType = "stock in"; // Varsayılan
+                                    string lowerInput = moveTypeName.ToLower();
+
+                                    if (lowerInput.Contains("out") || lowerInput.Contains("çıkış") || lowerInput.Contains("satış"))
+                                    {
+                                        targetMoveType = "stock out";
+                                    }
+                                    else
+                                    {
+                                        targetMoveType = "stock in";
+                                    }
+
+                                    var moveType = await _context.Move_Types
+                                        .FirstOrDefaultAsync(m => m.MoveType.ToLower() == targetMoveType);
+
+                                    if (moveType == null)
+                                    {
+                                        sb.AppendLine($"❌ Hata: '{targetMoveType}' hareket tipi sistemde bulunamadı.");
+                                        continue;
+                                    }
+
+                                    // Supplier varsa bul
+                                    Guid? supplierId = null;
+                                    if (!string.IsNullOrWhiteSpace(supplierName))
+                                    {
+                                        var supplier = await _context.Suppliers
+                                            .FirstOrDefaultAsync(s => s.SupplierName.ToLower().Contains(supplierName.ToLower()) && s.IsActive);
+                                        supplierId = supplier?.Id;
+                                    }
+
+                                    // UserId kontrolü
+                                    Guid userId = _currentUserService.UserId;
+
+                                    // Stok hareketi oluştur
+                                    var movement = new Stock_Movements
+                                    {
+                                        Id = Guid.NewGuid(),
+                                        InventoryId = inventory.Id,
+                                        CompanyId = _currentUserService.CompanyId ?? Guid.Empty,
+                                        Quantity = quantity,
+                                        MoveTypeId = moveType.Id,
+                                        SupplierId = supplierId ?? Guid.Empty,
+                                        UserId = userId,
+                                        Description = description,
+                                        IsActive = true,
+                                        CreatedAt = DateTime.UtcNow
+                                    };
+
+                                    _context.Stock_Movements.Add(movement);
+
+                                    // Stok güncelle
+                                    bool stockError = false;
+                                    if (targetMoveType == "stock in")
+                                    {
+                                        inventory.Quantity += quantity;
+                                        if (!isNewInventory && purchasePrice.HasValue)
+                                            inventory.PurchasePrice = purchasePrice.Value;
+                                    }
+                                    else if (targetMoveType == "stock out")
+                                    {
+                                        if (inventory.Quantity < quantity)
+                                        {
+                                            sb.AppendLine($"⚠️ Yetersiz stok: '{productName}' (Mevcut: {inventory.Quantity}, Talep: {quantity})");
+                                            stockError = true;
+                                            _context.Stock_Movements.Remove(movement); // Hareketi geri al
+                                        }
+                                        else
+                                        {
+                                            inventory.Quantity -= quantity;
+                                        }
+                                    }
+
+                                    if (!stockError)
+                                    {
+                                        await _context.SaveChangesAsync();
+                                        successCount++;
+                                        sb.AppendLine($"✅ {productName}: {quantity} adet {targetMoveType} yapıldı.");
+                                    }
                                 }
 
-                                await _context.SaveChangesAsync();
-                                responseText = $"✅ {quantity} adet '{productName}' için {moveTypeName} işlemi başarıyla kaydedildi!";
+                                responseText = items.Count > 1 
+                                    ? $"Toplu Stok İşlemi:\n{sb}" 
+                                    : sb.ToString().Trim();
+                                
+                                if (successCount == 0 && items.Count > 0 && string.IsNullOrEmpty(responseText))
+                                     responseText = "İşlem yapılamadı.";
                             }
                             break;
 
@@ -578,49 +798,102 @@ namespace Inventory_Management.WebApi.Controllers
                         case "delivery_rule":
                             if (command.Payload.HasValue)
                             {
-                                var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(command.Payload.Value.GetRawText());
+                                var root = command.Payload.Value;
+                                var items = new List<JsonElement>();
 
-                                string supplierName = payload.ContainsKey("supplierName") ? payload["supplierName"].GetString() : null;
-                                string ruleName = payload.ContainsKey("ruleName") ? payload["ruleName"].GetString() : null;
-                                string frequency = payload.ContainsKey("frequency") ? payload["frequency"].GetString() : "Weekly";
-                                string daysOfMonth = payload.ContainsKey("daysOfMonth") ? payload["daysOfMonth"].GetString() : null;
-                                string arrivalTime = payload.ContainsKey("arrivalTime") ? payload["arrivalTime"].GetString() : "09:00";
-
-                                if (string.IsNullOrWhiteSpace(supplierName) || string.IsNullOrWhiteSpace(ruleName))
+                                if (root.TryGetProperty("items", out JsonElement itemsElement) && itemsElement.ValueKind == JsonValueKind.Array)
                                 {
-                                    responseText = "Tedarikçi adı ve kural adı gerekli.";
-                                    break;
+                                    foreach (var item in itemsElement.EnumerateArray()) items.Add(item);
+                                }
+                                else
+                                {
+                                    items.Add(root);
                                 }
 
-                                var supplier = await _context.Suppliers
-                                    .FirstOrDefaultAsync(s => s.SupplierName.ToLower().Contains(supplierName.ToLower()) && s.IsActive);
+                                var sb = new StringBuilder();
+                                int successCount = 0;
 
-                                if (supplier == null)
+                                foreach (var item in items)
                                 {
-                                    responseText = $"'{supplierName}' tedarikçisi bulunamadı.";
-                                    break;
+                                    var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(item.GetRawText());
+
+                                    string supplierName = payload.ContainsKey("supplierName") ? payload["supplierName"].GetString() : null;
+                                    string ruleName = payload.ContainsKey("ruleName") ? payload["ruleName"].GetString() : null;
+                                    string frequency = payload.ContainsKey("frequency") ? payload["frequency"].GetString() : "Weekly";
+                                    string daysOfMonth = payload.ContainsKey("daysOfMonth") ? payload["daysOfMonth"].GetString()?.Replace(';', ',') : null;
+                                    string daysOfWeek = payload.ContainsKey("daysOfWeek") ? payload["daysOfWeek"].GetString()?.Replace(';', ',') : null;
+                                    string arrivalTime = payload.ContainsKey("arrivalTime") ? payload["arrivalTime"].GetString() : "09:00";
+                                    
+                                    string startDateStr = payload.ContainsKey("startDate") ? payload["startDate"].GetString() : DateTime.UtcNow.ToString("dd.MM.yyyy");
+                                    string endDateStr = payload.ContainsKey("endDate") ? payload["endDate"].GetString() : null;
+                                    string color = payload.ContainsKey("calendarColor") ? payload["calendarColor"].GetString() : "#3788d8"; // Default Blue
+                                    int interval = payload.ContainsKey("interval") ? payload["interval"].GetInt32() : 1;
+                                    int leadTimeDays = payload.ContainsKey("leadTimeDays") ? payload["leadTimeDays"].GetInt32() : 0;
+
+                                    if (string.IsNullOrWhiteSpace(supplierName) || string.IsNullOrWhiteSpace(ruleName))
+                                    {
+                                        sb.AppendLine("❌ Hata: Tedarikçi adı ve kural adı gerekli.");
+                                        continue;
+                                    }
+
+                                    var supplier = await _context.Suppliers
+                                        .FirstOrDefaultAsync(s => s.SupplierName.ToLower().Contains(supplierName.ToLower()) && s.IsActive);
+
+                                    if (supplier == null)
+                                    {
+                                        sb.AppendLine($"❌ Hata: '{supplierName}' tedarikçisi bulunamadı.");
+                                        continue;
+                                    }
+
+                                    // Parse Dates
+                                    DateTime start = DateTime.UtcNow;
+                                    if(DateTime.TryParse(startDateStr, out var sDate)) start = sDate;
+
+                                    DateTime? end = null;
+                                    if(!string.IsNullOrWhiteSpace(endDateStr) && DateTime.TryParse(endDateStr, out var eDate)) end = eDate;
+
+                                    // Frequency Enum
+                                    var frequencyEnum = frequency.ToLower() == "monthly"
+                                        ? Delivery_Rules.FrequencyType.Monthly
+                                        : Delivery_Rules.FrequencyType.Weekly;
+
+                                    // FIX: Default DaysOfWeek if missing for Weekly rules
+                                    if (frequencyEnum == Delivery_Rules.FrequencyType.Weekly && string.IsNullOrWhiteSpace(daysOfWeek))
+                                    {
+                                        daysOfWeek = ((int)DateTime.UtcNow.DayOfWeek).ToString();
+                                    }
+
+                                    // Arrival Time Fix (xx.xx or xx:xx format handling)
+                                    TimeSpan timeSpan = TimeSpan.Parse(arrivalTime.Replace(".", ":"));
+
+                                    var createCommand = new CreateDelivery_RulesCommand
+                                    {
+                                        SupplierId = supplier.Id,
+                                        RuleName = ruleName,
+                                        Frequency = frequencyEnum,
+                                        Interval = interval,
+                                        DaysOfMonth = daysOfMonth,
+                                        DaysOfWeek = daysOfWeek,
+                                        ArrivalTime = timeSpan,
+                                        StartDate = start,
+                                        EndDate = end,
+                                        CalendarColor = color,
+                                        LeadTimeDays = leadTimeDays,
+                                        CompanyId = _currentUserService.CompanyId ?? Guid.Empty 
+                                    };
+
+                                    // CreateDelivery_RulesCommand Handler'ını kullanıyoruz (Mediator üzerinden)
+                                    await _mediator.Send(createCommand);
+                                    successCount++;
+                                    sb.AppendLine($"✅ '{supplier.SupplierName}' için '{ruleName}' kuralı eklendi. (Başlangıç: {start:dd.MM.yyyy})");
                                 }
 
-                                var frequencyEnum = frequency.ToLower() == "monthly"
-                                    ? Delivery_Rules.FrequencyType.Monthly
-                                    : Delivery_Rules.FrequencyType.Weekly;
-
-                                var rule = new Delivery_Rules
-                                {
-                                    Id = Guid.NewGuid(),
-                                    SupplierId = supplier.Id,
-                                    RuleName = ruleName,
-                                    Frequency = frequencyEnum,
-                                    DaysOfMonth = daysOfMonth,
-                                    ArrivalTime = TimeSpan.Parse(arrivalTime),
-                                    Interval = 1,
-                                    IsActive = true,
-                                    CreatedAt = DateTime.UtcNow
-                                };
-
-                                _context.Delivery_Rules.Add(rule);
-                                await _context.SaveChangesAsync();
-                                responseText = $"✅ '{supplier.SupplierName}' için '{ruleName}' teslimat kuralı oluşturuldu!";
+                                responseText = items.Count > 1 
+                                    ? $"Toplu Teslimat Kuralı Ekleme Sonucu:\n{sb}" 
+                                    : sb.ToString().Trim();
+                                
+                                if (successCount == 0 && items.Count > 0 && string.IsNullOrEmpty(responseText))
+                                     responseText = "Hiçbir teslimat kuralı eklenemedi.";
                             }
                             break;
 
@@ -654,7 +927,7 @@ namespace Inventory_Management.WebApi.Controllers
                              IQueryable<Stock_Movements> movementQuery = _context.Stock_Movements;
                              if (command.Filters?.DateRange == "this_month")
                              {
-                                 var today = DateTime.UtcNow;
+                                 var today = DateTime.UtcNow.AddHours(3);
                                  var firstDay = new DateTime(today.Year, today.Month, 1);
                                  movementQuery = movementQuery.Where(m => m.CreatedAt >= firstDay);
                              }
@@ -699,7 +972,7 @@ namespace Inventory_Management.WebApi.Controllers
 
                             if (command.Filters?.DateRange == "yesterday")
                             {
-                                var yesterday = DateTime.UtcNow.Date.AddDays(-1);
+                                var yesterday = DateTime.UtcNow.AddHours(3).Date.AddDays(-1);
                                 salesQuery = salesQuery.Where(m => m.CreatedAt.Date == yesterday);
                             }
 
@@ -749,7 +1022,7 @@ namespace Inventory_Management.WebApi.Controllers
                             }
                             
                             var productResponse = products.Take(command.Filters?.Take ?? 10)
-                                .Select(p => $"**{p.ProductName}** (Barkod: {p.Barcode})");
+                                .Select(p => $"**{p.ProductName}** (Barkod: {p.Barcode}) - Kategori: {p.CategoryName ?? "-"}, Birim: {p.UnitTypeName ?? "-"}");
 
                             responseText = products.Any()
                                 ? $"📦 **Ürün Listesi**:\n- {string.Join("\n- ", productResponse)}"
@@ -783,7 +1056,7 @@ namespace Inventory_Management.WebApi.Controllers
 
                                 if (!string.IsNullOrEmpty(command.Filters.ExpirationDate) && command.Filters.ExpirationDate == "this_month")
                                 {
-                                    var today = DateTime.UtcNow;
+                                    var today = DateTime.UtcNow.AddHours(3);
                                     var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
                                     var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
                                     inventoryQuery = inventoryQuery.Where(i => i.ExpirationDate >= firstDayOfMonth && i.ExpirationDate <= lastDayOfMonth);
@@ -816,7 +1089,7 @@ namespace Inventory_Management.WebApi.Controllers
                                 {
                                     string pName = i.Product?.ProductName ?? "Bilinmeyen Ürün";
                                     string stockStatus = i.Quantity <= i.CriticalStockQuantity ? "⚠️ Kritik" : "✅";
-                                    return $"**{pName}**: {i.Quantity} Adet (Min: {i.CriticalStockQuantity}) {stockStatus} - Fiyat: {i.SalePrice:C2}";
+                                    return $"**{pName}**: {i.Quantity} Adet (Min: {i.CriticalStockQuantity}) {stockStatus} - Alış: {i.PurchasePrice:C2}, Satış: {i.SalePrice:C2}, SKT: {i.ExpirationDate:dd.MM.yyyy}, Seri No: {i.BatchNumber ?? "-"}";
                                 });
 
                             responseText = inventoryItems.Any()
@@ -827,7 +1100,8 @@ namespace Inventory_Management.WebApi.Controllers
                         // 3. STOK HAREKETLERİ
                         case "stock_movement":
                             var movementsQuery = _context.Stock_Movements
-                                .Include(m => m.Inventory.Product)
+                                .Include(m => m.Inventory)
+                                    .ThenInclude(i => i.Product)
                                 .Include(m => m.User)
                                 .Include(m => m.Supplier)
                                 .Include(m => m.MoveType)
@@ -836,7 +1110,7 @@ namespace Inventory_Management.WebApi.Controllers
                             if (command.Filters != null)
                             {
                                 if (!string.IsNullOrEmpty(command.Filters.DateRange) && command.Filters.DateRange == "today")
-                                    movementsQuery = movementsQuery.Where(m => m.CreatedAt.Date == DateTime.UtcNow.Date);
+                                    movementsQuery = movementsQuery.Where(m => m.CreatedAt.Date == DateTime.UtcNow.AddHours(3).Date);
                                 
                                 if (!string.IsNullOrEmpty(command.Filters.UserName))
                                     movementsQuery = movementsQuery.Where(m => (m.User.FirstName + " " + m.User.LastName).ToLower().Contains(command.Filters.UserName.ToLower()));
@@ -851,7 +1125,15 @@ namespace Inventory_Management.WebApi.Controllers
                             var movements = await movementsQuery.OrderByDescending(m => m.CreatedAt).Take(command.Filters?.Take ?? 10).ToListAsync();
                             
                             var movementResponse = movements
-                                .Select(m => $"{(m.MoveType.MoveType.Contains("Giriş") ? "📥" : "📤")} **{m.Inventory.Product.ProductName}**: {m.Quantity} Adet, {m.CreatedAt:dd.MM HH:mm}");
+                                .Select(m => {
+                                    string moveTypeIcon = m.MoveType.MoveType.ToLower().Contains("in") || m.MoveType.MoveType.ToLower().Contains("giriş") ? "📥 Giriş" : "📤 Çıkış";
+                                    string userName = m.User != null ? $"{m.User.FirstName} {m.User.LastName}" : "Bilinmeyen Kullanıcı";
+                                    // Fiyat hesaplama: Alış veya Satış fiyatı üzerinden toplam
+                                    float unitPrice = m.MoveType.MoveType.ToLower().Contains("in") ? m.Inventory.PurchasePrice : m.Inventory.SalePrice;
+                                    float totalPrice = m.Quantity * unitPrice;
+                                    
+                                    return $"{moveTypeIcon} - **{m.Inventory.Product.ProductName}**\n   Miktar: {m.Quantity} Adet | Toplam Tutar: {totalPrice:C2}\n   İşlem Tarihi: {m.CreatedAt:dd.MM.yyyy HH:mm} | İşlemi Yapan: {userName}\n   Seri No: {m.Inventory.BatchNumber ?? "-"} | SKT: {m.Inventory.ExpirationDate:dd.MM.yyyy}";
+                                });
 
                             responseText = movements.Any()
                                 ? $"📋 **Son Stok Hareketleri**:\n- {string.Join("\n- ", movementResponse)}"
@@ -906,224 +1188,421 @@ namespace Inventory_Management.WebApi.Controllers
                     if (!command.Payload.HasValue)
                         return Ok(new { response = "Güncellenecek bilgiyi (payload) belirtmediniz." });
 
-                    var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(command.Payload.Value.GetRawText());
-
-                    switch (entity)
+                    var rootPayload = command.Payload.Value;
+                    
+                    // --- A. BULK UPDATE (PAYLOAD "ITEMS" İÇERİYORSA) ---
+                    if (rootPayload.TryGetProperty("items", out JsonElement itemsElement) && itemsElement.ValueKind == JsonValueKind.Array)
                     {
-                        case "inventory":
-                            IQueryable<Inventories> inventoriesToUpdate = _context.Inventories.Include(i => i.Product).ThenInclude(p => p.Category);
+                        var sb = new StringBuilder();
+                        int successCount = 0;
 
-                            // Filtreleme
-                            if (command.Filters != null)
-                            {
-                                if (!string.IsNullOrEmpty(command.Filters.ProductName))
-                                    inventoriesToUpdate = inventoriesToUpdate.Where(i => i.Product.ProductName.ToLower().Contains(command.Filters.ProductName.ToLower()));
-                                if (!string.IsNullOrEmpty(command.Filters.CategoryName))
-                                    inventoriesToUpdate = inventoriesToUpdate.Where(i => i.Product.Category.CategoryName.ToLower().Contains(command.Filters.CategoryName.ToLower()));
-                            }
-
-                            var inventoryList = await inventoriesToUpdate.ToListAsync();
-                            if (!inventoryList.Any())
-                            {
-                                responseText = "Güncellenecek envanter kaydı bulunamadı.";
-                                break;
-                            }
-
-                            // Toplu Güncelleme Mantığı
-                            foreach (var inventory in inventoryList)
-                            {
-                                if (payload.TryGetValue("salePrice", out var salePrice)) inventory.SalePrice = salePrice.GetSingle();
-                                if (payload.TryGetValue("purchasePrice", out var purchasePrice)) inventory.PurchasePrice = purchasePrice.GetSingle();
-                                if (payload.TryGetValue("criticalStockQuantity", out var criticalStock)) inventory.CriticalStockQuantity = criticalStock.GetInt32();
-                                if (payload.TryGetValue("quantity", out var quantity)) inventory.Quantity = quantity.GetInt32(); // Stok sayımı düzeltme
-
-                                // Yüzdesel artış/azalış
-                                if (payload.TryGetValue("increasePercent", out var incPercent) && payload.TryGetValue("field", out var incField))
-                                {
-                                    if (incField.GetString() == "salePrice") inventory.SalePrice *= (1 + incPercent.GetSingle() / 100);
-                                }
-                                if (payload.TryGetValue("decreasePercent", out var decPercent) && payload.TryGetValue("field", out var decField))
-                                {
-                                     if (decField.GetString() == "salePrice") inventory.SalePrice *= (1 - decPercent.GetSingle() / 100);
-                                }
-                            }
+                        foreach (var item in itemsElement.EnumerateArray())
+                        {
+                            var itemDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(item.GetRawText());
                             
-                            await _context.SaveChangesAsync();
-                            responseText = $"✅ {inventoryList.Count} adet envanter kaydı başarıyla güncellendi.";
-                            break;
-
-                        default:
-                            responseText = $"'{entity}' için güncelleme işlemi henüz tanımlanmamış.";
-                            break;
-
-                        // Product güncelleme - Senaryo 53, 57, 58, 63, 66, 68
-                        case "product":
-                            IQueryable<Products> productsToUpdate = _context.Products.Include(p => p.Category);
-
-                            if (command.Filters != null)
+                            switch (entity)
                             {
-                                if (!string.IsNullOrEmpty(command.Filters.Name))
-                                    productsToUpdate = productsToUpdate.Where(p => p.ProductName.ToLower().Contains(command.Filters.Name.ToLower()));
+                                case "inventory":
+                                    string pName = itemDict.ContainsKey("productName") ? itemDict["productName"].GetString() : null;
+                                    if (!string.IsNullOrEmpty(pName))
+                                    {
+                                        var inv = await _context.Inventories.Include(i => i.Product).FirstOrDefaultAsync(i => i.Product.ProductName.ToLower() == pName.ToLower() && i.IsActive);
+                                        if (inv != null)
+                                        {
+                                            if (itemDict.TryGetValue("quantity", out var q)) inv.Quantity = q.GetInt32();
+                                            if (itemDict.TryGetValue("salePrice", out var sp)) inv.SalePrice = sp.GetSingle();
+                                            if (itemDict.TryGetValue("purchasePrice", out var pp)) inv.PurchasePrice = pp.GetSingle();
+                                            if (itemDict.TryGetValue("criticalStockQuantity", out var csq)) inv.CriticalStockQuantity = csq.GetInt32();
+                                            successCount++;
+                                            sb.AppendLine($"✅ '{pName}' güncellendi.");
+                                        }
+                                        else sb.AppendLine($"⚠️ '{pName}' bulunamadı.");
+                                    }
+                                    break;
+
+                                case "product":
+                                    string prodName = itemDict.ContainsKey("productName") ? itemDict["productName"].GetString() : null;
+                                    string barcode = itemDict.ContainsKey("barcode") ? itemDict["barcode"].GetString() : null;
+                                    
+                                    Products prod = null;
+                                    if (!string.IsNullOrEmpty(barcode)) prod = await _context.Products.FirstOrDefaultAsync(p => p.Barcode == barcode);
+                                    else if (!string.IsNullOrEmpty(prodName)) prod = await _context.Products.FirstOrDefaultAsync(p => p.ProductName.ToLower() == prodName.ToLower());
+
+                                    if (prod != null)
+                                    {
+                                        if (itemDict.TryGetValue("newProductName", out var newName)) prod.ProductName = newName.GetString();
+                                        if (itemDict.TryGetValue("description", out var desc)) prod.Description = desc.GetString();
+                                        if (itemDict.TryGetValue("isActive", out var act)) prod.IsActive = act.GetBoolean();
+                                        successCount++;
+                                        sb.AppendLine($"✅ '{prod.ProductName}' güncellendi.");
+                                    }
+                                    else sb.AppendLine($"⚠️ Ürün bulunamadı (Ad: {prodName}, Barkod: {barcode}).");
+                                    break;
+                                
+                                case "supplier":
+                                    string suppName = itemDict.ContainsKey("supplierName") ? itemDict["supplierName"].GetString() : null;
+                                    if (!string.IsNullOrEmpty(suppName))
+                                    {
+                                        var supp = await _context.Suppliers.FirstOrDefaultAsync(s => s.SupplierName.ToLower() == suppName.ToLower());
+                                        if (supp != null)
+                                        {
+                                            if (itemDict.TryGetValue("contactPerson", out var cp)) supp.ContactPerson = cp.GetString();
+                                            if (itemDict.TryGetValue("phoneNumber", out var ph)) supp.PhoneNumber = ph.GetString();
+                                            if (itemDict.TryGetValue("email", out var em)) supp.Email = em.GetString();
+                                            successCount++;
+                                            sb.AppendLine($"✅ '{suppName}' güncellendi.");
+                                        }
+                                    }
+                                    break;
                             }
+                        }
 
-                            var productList = await productsToUpdate.ToListAsync();
-                            if (!productList.Any())
-                            {
-                                responseText = "Güncellenecek ürün bulunamadı.";
-                                break;
-                            }
+                        if (successCount > 0) await _context.SaveChangesAsync();
+                        responseText = string.IsNullOrEmpty(sb.ToString()) ? "Toplu güncelleme başarısız." : sb.ToString();
+                    }
+                    // --- B. FILTER-BASED UPDATE (TEK PAYLOAD, FİLTREYE GÖRE UYGULA) ---
+                    else 
+                    {
+                        var payload = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(rootPayload.GetRawText());
 
-                            foreach (var product in productList)
-                            {
-                                if (payload.TryGetValue("productName", out var pName))
-                                    product.ProductName = pName.GetString();
+                        switch (entity)
+                        {
+                            case "inventory":
+                                IQueryable<Inventories> inventoriesToUpdate = _context.Inventories.Include(i => i.Product).ThenInclude(p => p.Category);
+                                bool hasInventoryFilter = false;
 
-                                if (payload.TryGetValue("description", out var desc))
-                                    product.Description = desc.GetString();
-
-                                if (payload.TryGetValue("isActive", out var isActive))
-                                    product.IsActive = isActive.GetBoolean();
-
-                                if (payload.TryGetValue("categoryName", out var catName))
+                                if (command.Filters != null)
                                 {
-                                    var category = await _context.Categories
-                                        .FirstOrDefaultAsync(c => c.CategoryName.ToLower().Contains(catName.GetString().ToLower()));
-                                    if (category != null)
-                                        product.CategoryId = category.Id;
+                                    if (!string.IsNullOrEmpty(command.Filters.ProductName))
+                                    {
+                                        inventoriesToUpdate = inventoriesToUpdate.Where(i => i.Product.ProductName.ToLower().Contains(command.Filters.ProductName.ToLower()));
+                                        hasInventoryFilter = true;
+                                    }
+                                    if (!string.IsNullOrEmpty(command.Filters.CategoryName))
+                                    {
+                                        inventoriesToUpdate = inventoriesToUpdate.Where(i => i.Product.Category.CategoryName.ToLower().Contains(command.Filters.CategoryName.ToLower()));
+                                        hasInventoryFilter = true;
+                                    }
                                 }
-                            }
 
-                            await _context.SaveChangesAsync();
-                            responseText = $"✅ {productList.Count} adet ürün başarıyla güncellendi.";
-                            break;
+                                if (!hasInventoryFilter) { responseText = "Güncellenecek envanter için ürün adı veya kategori belirtmelisiniz."; break; }
 
-                        // Supplier güncelleme - Senaryo 54, 64, 73
-                        case "supplier":
-                            IQueryable<Suppliers> suppliersToUpdate = _context.Suppliers;
+                                var inventoryList = await inventoriesToUpdate.ToListAsync();
+                                if (!inventoryList.Any()) { responseText = "Güncellenecek envanter kaydı bulunamadı."; break; }
 
-                            if (command.Filters != null)
-                            {
-                                if (!string.IsNullOrEmpty(command.Filters.Name))
-                                    suppliersToUpdate = suppliersToUpdate.Where(s => s.SupplierName.ToLower().Contains(command.Filters.Name.ToLower()));
+                                foreach (var inventory in inventoryList)
+                                {
+                                    if (payload.TryGetValue("salePrice", out var salePrice)) inventory.SalePrice = salePrice.GetSingle();
+                                    if (payload.TryGetValue("purchasePrice", out var purchasePrice)) inventory.PurchasePrice = purchasePrice.GetSingle();
+                                    if (payload.TryGetValue("criticalStockQuantity", out var criticalStock)) inventory.CriticalStockQuantity = criticalStock.GetInt32();
+                                    if (payload.TryGetValue("quantity", out var quantity)) inventory.Quantity = quantity.GetInt32();
 
-                                if (command.Filters.IsActive.HasValue)
-                                    suppliersToUpdate = suppliersToUpdate.Where(s => s.IsActive == command.Filters.IsActive.Value);
-                            }
-
-                            var supplierList = await suppliersToUpdate.ToListAsync();
-                            if (!supplierList.Any())
-                            {
-                                responseText = "Güncellenecek tedarikçi bulunamadı.";
+                                    if (payload.TryGetValue("increasePercent", out var incPercent) && payload.TryGetValue("field", out var incField))
+                                    {
+                                        if (incField.GetString() == "salePrice") inventory.SalePrice *= (1 + incPercent.GetSingle() / 100);
+                                    }
+                                    if (payload.TryGetValue("decreasePercent", out var decPercent) && payload.TryGetValue("field", out var decField))
+                                    {
+                                         if (decField.GetString() == "salePrice") inventory.SalePrice *= (1 - decPercent.GetSingle() / 100);
+                                    }
+                                }
+                                
+                                await _context.SaveChangesAsync();
+                                responseText = $"✅ {inventoryList.Count} adet envanter kaydı başarıyla güncellendi.";
                                 break;
-                            }
 
-                            foreach (var supplier in supplierList)
-                            {
-                                if (payload.TryGetValue("contactPerson", out var contact))
-                                    supplier.ContactPerson = contact.GetString();
+                            case "product":
+                                IQueryable<Products> productsToUpdate = _context.Products.Include(p => p.Category);
+                                bool hasProductFilter = false;
 
-                                if (payload.TryGetValue("phoneNumber", out var phone))
-                                    supplier.PhoneNumber = phone.GetString();
+                                if (command.Filters != null)
+                                {
+                                    var filterName = command.Filters.Name ?? command.Filters.ProductName;
 
-                                if (payload.TryGetValue("email", out var email))
-                                    supplier.Email = email.GetString();
+                                    if (!string.IsNullOrEmpty(filterName))
+                                    {
+                                        var lowerName = filterName.ToLower();
+                                        // Exact Match Priority
+                                        var exactProduct = await _context.Products.FirstOrDefaultAsync(p => p.ProductName.ToLower() == lowerName);
+                                        
+                                        if (exactProduct != null)
+                                        {
+                                            productsToUpdate = productsToUpdate.Where(p => p.Id == exactProduct.Id);
+                                        }
+                                        else
+                                        {
+                                            productsToUpdate = productsToUpdate.Where(p => p.ProductName.ToLower().Contains(lowerName));
+                                        }
+                                        hasProductFilter = true;
+                                    }
 
-                                if (payload.TryGetValue("isActive", out var isActive))
-                                    supplier.IsActive = isActive.GetBoolean();
-                            }
+                                    if (!string.IsNullOrEmpty(command.Filters.Barcode))
+                                    {
+                                        productsToUpdate = productsToUpdate.Where(p => p.Barcode == command.Filters.Barcode);
+                                        hasProductFilter = true;
+                                    }
+                                }
 
-                            await _context.SaveChangesAsync();
-                            responseText = $"✅ {supplierList.Count} adet tedarikçi başarıyla güncellendi.";
-                            break;
+                                if (!hasProductFilter) { responseText = "Güncellenecek ürün için isim veya barkod belirtmelisiniz."; break; }
 
-                        // Category güncelleme - Senaryo 55
-                        case "category":
-                            IQueryable<Categories> categoriesToUpdate = _context.Categories;
+                                var productList = await productsToUpdate.ToListAsync();
+                                if (!productList.Any()) { responseText = "Güncellenecek ürün bulunamadı."; break; }
 
-                            if (command.Filters != null && !string.IsNullOrEmpty(command.Filters.Name))
-                                categoriesToUpdate = categoriesToUpdate.Where(c => c.CategoryName.ToLower().Contains(command.Filters.Name.ToLower()));
+                                foreach (var product in productList)
+                                {
+                                    if (payload.TryGetValue("productName", out var pName)) product.ProductName = pName.GetString();
+                                    if (payload.TryGetValue("description", out var prodDesc)) product.Description = prodDesc.GetString();
+                                    if (payload.TryGetValue("isActive", out var isActive)) product.IsActive = isActive.GetBoolean();
 
-                            var categoryList = await categoriesToUpdate.ToListAsync();
-                            if (!categoryList.Any())
-                            {
-                                responseText = "Güncellenecek kategori bulunamadı.";
+                                    if (payload.TryGetValue("categoryName", out var catName))
+                                    {
+                                        var category = await _context.Categories.FirstOrDefaultAsync(c => c.CategoryName.ToLower().Contains(catName.GetString().ToLower()));
+                                        if (category != null) 
+                                        {
+                                            product.CategoryId = category.Id;
+                                        }
+                                        else
+                                        {
+                                            responseText += $"\n⚠️ Uyarı: '{catName}' kategorisi bulunamadığı için ürünün kategorisi güncellenemedi.";
+                                        }
+                                    }
+                                    
+                                    if (payload.TryGetValue("unitTypeName", out var unitTypeName))
+                                    {
+                                        var unitType = await _context.Unit_Types.FirstOrDefaultAsync(u => u.UnitName.ToLower() == unitTypeName.GetString().ToLower());
+                                        if (unitType != null) 
+                                        {
+                                            product.UnitTypeId = unitType.Id;
+                                        }
+                                        else
+                                        {
+                                            responseText += $"\n⚠️ Uyarı: '{unitTypeName}' birim tipi bulunamadığı için güncellenemedi.";
+                                        }
+                                    }
+                                }
+
+                                await _context.SaveChangesAsync();
+                                responseText = $"✅ {productList.Count} adet ürün başarıyla güncellendi.";
                                 break;
-                            }
+                            
+                            case "stock_movement":
+                                Guid movementId = Guid.Empty;
+                                if(command.Filters != null && !string.IsNullOrEmpty(command.Filters.Id)) 
+                                     Guid.TryParse(command.Filters.Id, out movementId);
+                                
+                                if(movementId == Guid.Empty) { responseText = "Güncellenecek stok hareketinin ID'si (filters.id) belirtilmelidir."; break; }
 
-                            foreach (var category in categoryList)
-                            {
-                                if (payload.TryGetValue("categoryName", out var catName))
-                                    category.CategoryName = catName.GetString();
+                                var movement = await _context.Stock_Movements.Include(m => m.MoveType).FirstOrDefaultAsync(m => m.Id == movementId);
+                                if(movement == null) { responseText = "Stok hareketi bulunamadı."; break; }
 
-                                if (payload.TryGetValue("description", out var desc))
-                                    category.Description = desc.GetString();
-                            }
+                                int newQty = movement.Quantity;
+                                if (payload.TryGetValue("quantity", out var qty)) newQty = qty.GetInt32();
+                                
+                                string newDesc = movement.Description;
+                                if (payload.TryGetValue("description", out var movDesc)) newDesc = movDesc.GetString();
 
-                            await _context.SaveChangesAsync();
-                            responseText = $"✅ {categoryList.Count} adet kategori başarıyla güncellendi.";
-                            break;
+                                Guid newMoveTypeId = movement.MoveTypeId;
+                                if (payload.TryGetValue("moveTypeId", out var mtId))
+                                {
+                                    Guid.TryParse(mtId.GetString(), out newMoveTypeId);
+                                }
+                                else if (payload.TryGetValue("moveTypeName", out var mtName))
+                                {
+                                    string targetMoveType = mtName.GetString().ToLower();
+                                    if (targetMoveType.Contains("in") || targetMoveType.Contains("giriş")) targetMoveType = "stock in";
+                                    else if (targetMoveType.Contains("out") || targetMoveType.Contains("çıkış")) targetMoveType = "stock out";
 
-                        // Delivery_Rule güncelleme - Senaryo 56, 65, 69, 74
-                        case "delivery_rule":
-                            IQueryable<Delivery_Rules> rulesToUpdate = _context.Delivery_Rules.Include(r => r.Supplier);
+                                    var moveType = await _context.Move_Types.FirstOrDefaultAsync(m => m.MoveType.ToLower() == targetMoveType);
+                                    if (moveType != null) newMoveTypeId = moveType.Id;
+                                }
 
-                            if (command.Filters != null)
-                            {
-                                if (!string.IsNullOrEmpty(command.Filters.Id))
-                                    rulesToUpdate = rulesToUpdate.Where(r => r.Id.ToString() == command.Filters.Id);
+                                Guid newInventoryId = movement.InventoryId;
+                                if (payload.TryGetValue("inventoryId", out var invId))
+                                {
+                                    Guid.TryParse(invId.GetString(), out newInventoryId);
+                                }
 
-                                if (!string.IsNullOrEmpty(command.Filters.Name))
-                                    rulesToUpdate = rulesToUpdate.Where(r => r.RuleName.ToLower().Contains(command.Filters.Name.ToLower()));
-                            }
+                                var updateCmd = new UpdateStock_MovementsCommand {
+                                    Id = movement.Id,
+                                    CompanyId = movement.CompanyId,
+                                    InventoryId = newInventoryId,
+                                    MoveTypeId = newMoveTypeId,
+                                    SupplierId = movement.SupplierId,
+                                    UserId = _currentUserService.UserId,
+                                    Quantity = newQty,
+                                    Description = newDesc,
+                                    IsActive = true
+                                };
 
-                            var ruleList = await rulesToUpdate.ToListAsync();
-                            if (!ruleList.Any())
-                            {
-                                responseText = "Güncellenecek teslimat kuralı bulunamadı.";
+                                await _mediator.Send(updateCmd);
+                                responseText = "✅ Stok hareketi başarıyla güncellendi (Stok miktarları yeniden hesaplandı).";
                                 break;
-                            }
 
-                            foreach (var rule in ruleList)
-                            {
-                                if (payload.TryGetValue("arrivalTime", out var time))
-                                    rule.ArrivalTime = TimeSpan.Parse(time.GetString());
+                            case "supplier":
+                                IQueryable<Suppliers> suppliersToUpdate = _context.Suppliers;
+                                bool hasSupplierFilter = false;
 
-                                if (payload.TryGetValue("interval", out var interval))
-                                    rule.Interval = interval.GetInt32();
+                                if (command.Filters != null)
+                                {
+                                    var filterName = command.Filters.Name ?? command.Filters.SupplierName;
 
-                                if (payload.TryGetValue("isActive", out var isActive))
-                                    rule.IsActive = isActive.GetBoolean();
-                            }
+                                    if (!string.IsNullOrEmpty(filterName))
+                                    {
+                                        var lowerName = filterName.ToLower();
+                                        // Öncelik tam eşleşmede (Exact Match Priority)
+                                        var exactMatch = await _context.Suppliers
+                                            .FirstOrDefaultAsync(s => s.SupplierName.ToLower() == lowerName);
 
-                            await _context.SaveChangesAsync();
-                            responseText = $"✅ {ruleList.Count} adet teslimat kuralı güncellendi.";
-                            break;
+                                        if (exactMatch != null)
+                                        {
+                                            suppliersToUpdate = suppliersToUpdate.Where(s => s.Id == exactMatch.Id);
+                                        }
+                                        else
+                                        {
+                                            suppliersToUpdate = suppliersToUpdate.Where(s => s.SupplierName.ToLower().Contains(lowerName));
+                                        }
+                                        hasSupplierFilter = true;
+                                    }
 
-                        // Unit_Type güncelleme - Senaryo 60
-                        case "unit_type":
-                            IQueryable<Unit_Types> unitsToUpdate = _context.Unit_Types;
+                                    if (command.Filters.IsActive.HasValue)
+                                    {
+                                        suppliersToUpdate = suppliersToUpdate.Where(s => s.IsActive == command.Filters.IsActive.Value);
+                                        hasSupplierFilter = true;
+                                    }
+                                }
 
-                            if (command.Filters != null && !string.IsNullOrEmpty(command.Filters.Name))
-                                unitsToUpdate = unitsToUpdate.Where(u => u.UnitName.ToLower().Contains(command.Filters.Name.ToLower()));
+                                if (!hasSupplierFilter) { responseText = "Güncellenecek tedarikçi ismini belirtmelisiniz."; break; }
 
-                            var unitList = await unitsToUpdate.ToListAsync();
-                            if (!unitList.Any())
-                            {
-                                responseText = "Güncellenecek birim tipi bulunamadı.";
+                                var supplierList = await suppliersToUpdate.ToListAsync();
+                                if (!supplierList.Any()) { responseText = "Güncellenecek tedarikçi bulunamadı."; break; }
+
+                                foreach (var supplier in supplierList)
+                                {
+                                    if (payload.TryGetValue("contactPerson", out var contact)) supplier.ContactPerson = contact.GetString();
+                                    if (payload.TryGetValue("phoneNumber", out var phone)) supplier.PhoneNumber = phone.GetString();
+                                    if (payload.TryGetValue("email", out var email)) supplier.Email = email.GetString();
+                                    if (payload.TryGetValue("isActive", out var isActive)) supplier.IsActive = isActive.GetBoolean();
+                                    if (payload.TryGetValue("address", out var addr)) supplier.Address = addr.GetString();
+                                }
+                                await _context.SaveChangesAsync();
+                                responseText = $"✅ {supplierList.Count} adet tedarikçi güncellendi.";
                                 break;
-                            }
 
-                            foreach (var unit in unitList)
-                            {
-                                if (payload.TryGetValue("unitName", out var unitName))
-                                    unit.UnitName = unitName.GetString();
-                            }
+                            case "category":
+                                IQueryable<Categories> categoriesToUpdate = _context.Categories;
+                                bool hasCategoryFilter = false;
 
-                            await _context.SaveChangesAsync();
-                            responseText = $"✅ {unitList.Count} adet birim tipi güncellendi.";
-                            break;
+                                if (command.Filters != null)
+                                {
+                                    var filterName = command.Filters.Name ?? command.Filters.CategoryName;
 
+                                    if (!string.IsNullOrEmpty(filterName))
+                                    {
+                                        var lowerName = filterName.ToLower();
+                                        var exactCategory = await _context.Categories.FirstOrDefaultAsync(c => c.CategoryName.ToLower() == lowerName);
 
+                                        if (exactCategory != null)
+                                        {
+                                            categoriesToUpdate = categoriesToUpdate.Where(c => c.Id == exactCategory.Id);
+                                        }
+                                        else
+                                        {
+                                            categoriesToUpdate = categoriesToUpdate.Where(c => c.CategoryName.ToLower().Contains(lowerName));
+                                        }
+                                        hasCategoryFilter = true;
+                                    }
+                                }
+
+                                if (!hasCategoryFilter) { responseText = "Güncellenecek kategori ismini belirtmelisiniz."; break; }
+
+                                var categoryList = await categoriesToUpdate.ToListAsync();
+                                if (!categoryList.Any()) { responseText = "Güncellenecek kategori bulunamadı."; break; }
+
+                                foreach (var category in categoryList)
+                                {
+                                    if (payload.TryGetValue("categoryName", out var catName)) category.CategoryName = catName.GetString();
+                                    if (payload.TryGetValue("description", out var catDesc)) category.Description = catDesc.GetString();
+                                }
+                                await _context.SaveChangesAsync();
+                                responseText = $"✅ {categoryList.Count} adet kategori güncellendi.";
+                                break;
+
+                            case "delivery_rule":
+                                IQueryable<Delivery_Rules> rulesToUpdate = _context.Delivery_Rules.Include(r => r.Supplier);
+                                bool hasRuleFilter = false;
+
+                                if (command.Filters != null)
+                                {
+                                    if (!string.IsNullOrEmpty(command.Filters.Id)) 
+                                    {
+                                        rulesToUpdate = rulesToUpdate.Where(r => r.Id.ToString() == command.Filters.Id);
+                                        hasRuleFilter = true;
+                                    }
+                                    
+                                    var filterName = command.Filters.Name ?? command.Filters.RuleName;
+                                    if (!string.IsNullOrEmpty(filterName)) 
+                                    {
+                                        rulesToUpdate = rulesToUpdate.Where(r => r.RuleName.ToLower().Contains(filterName.ToLower()));
+                                        hasRuleFilter = true;
+                                    }
+                                }
+
+                                if (!hasRuleFilter) { responseText = "Güncellenecek teslimat kuralı için ID veya İsim belirtmelisiniz."; break; }
+
+                                var ruleList = await rulesToUpdate.ToListAsync();
+                                if (!ruleList.Any()) { responseText = "Güncellenecek teslimat kuralı bulunamadı."; break; }
+
+                                foreach (var rule in ruleList)
+                                {
+                                    if (payload.TryGetValue("arrivalTime", out var time)) rule.ArrivalTime = TimeSpan.Parse(time.GetString());
+                                    if (payload.TryGetValue("interval", out var interval)) rule.Interval = interval.GetInt32();
+                                    if (payload.TryGetValue("isActive", out var isActive)) rule.IsActive = isActive.GetBoolean();
+                                }
+                                await _context.SaveChangesAsync();
+                                responseText = $"✅ {ruleList.Count} adet teslimat kuralı güncellendi.";
+                                break;
+
+                            case "unit_type":
+                                IQueryable<Unit_Types> unitsToUpdate = _context.Unit_Types;
+                                bool hasUnitFilter = false;
+
+                                if (command.Filters != null)
+                                {
+                                    var filterName = command.Filters.Name; // UnitType usually just 'Name'
+                                    if (!string.IsNullOrEmpty(filterName))
+                                    {
+                                        var lowerName = filterName.ToLower();
+                                        var exactUnit = await _context.Unit_Types.FirstOrDefaultAsync(u => u.UnitName.ToLower() == lowerName);
+
+                                        if (exactUnit != null)
+                                        {
+                                            unitsToUpdate = unitsToUpdate.Where(u => u.Id == exactUnit.Id);
+                                        }
+                                        else
+                                        {
+                                            unitsToUpdate = unitsToUpdate.Where(u => u.UnitName.ToLower().Contains(lowerName));
+                                        }
+                                        hasUnitFilter = true;
+                                    }
+                                }
+
+                                if (!hasUnitFilter) { responseText = "Güncellenecek birim tipi ismini belirtmelisiniz."; break; }
+
+                                var unitList = await unitsToUpdate.ToListAsync();
+                                if (!unitList.Any()) { responseText = "Güncellenecek birim tipi bulunamadı."; break; }
+
+                                foreach (var unit in unitList)
+                                {
+                                    if (payload.TryGetValue("unitName", out var unitName)) unit.UnitName = unitName.GetString();
+                                }
+                                await _context.SaveChangesAsync();
+                                responseText = $"✅ {unitList.Count} adet birim tipi güncellendi.";
+                                break;
+                                
+                            default:
+                                responseText = $"'{entity}' için güncelleme işlemi tanımlanmamış.";
+                                break;
+                        }
                     }
                 }
                 // -------------------------------------------------------------------------
@@ -1131,108 +1610,172 @@ namespace Inventory_Management.WebApi.Controllers
                 // -------------------------------------------------------------------------
                 else if (op == "delete")
                 {
-                     if (command.Filters == null) {
-                        responseText = "Silme işlemi için filtre belirtmelisiniz.";
-                        
-                    }
-
-                    switch(entity)
+                    // 1. BULK DELETE via PAYLOAD "ITEMS"
+                    if (command.Payload.HasValue && command.Payload.Value.TryGetProperty("items", out JsonElement itemsElement) && itemsElement.ValueKind == JsonValueKind.Array)
                     {
-                        case "supplier":
-                            var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.SupplierName.ToLower().Contains(command.Filters.Name.ToLower()));
-                            if(supplier == null) {
-                                responseText = $"'{command.Filters.Name}' adında bir tedarikçi bulunamadı.";
-                                break;
-                            }
-                            supplier.IsActive = false; // Soft delete
-                            await _context.SaveChangesAsync();
-                            responseText = $"✅ '{supplier.SupplierName}' tedarikçisi silindi (pasif olarak ayarlandı).";
-                            break;
-                        
-                        case "inventory":
-                             IQueryable<Inventories> inventoriesToDelete = _context.Inventories;
-                             if(!string.IsNullOrEmpty(command.Filters.ProductName))
-                                inventoriesToDelete = inventoriesToDelete.Where(i => i.Product.ProductName.ToLower().Contains(command.Filters.ProductName.ToLower()));
-                            
-                             if (command.Filters.ExpirationDate == "expired")
-                                inventoriesToDelete = inventoriesToDelete.Where(i => i.ExpirationDate < DateTime.UtcNow);
-                            
-                            var deletedCount = await inventoriesToDelete.ExecuteUpdateAsync(s => s.SetProperty(i => i.IsActive, false)); // Toplu Soft Delete
-                            responseText = $"✅ {deletedCount} adet envanter kaydı silindi (pasif yapıldı).";
-                            break;
+                         int successCount = 0;
+                         foreach (var item in itemsElement.EnumerateArray())
+                         {
+                             var itemDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(item.GetRawText());
+                             
+                             switch(entity)
+                             {
+                                 case "product":
+                                     string pName = itemDict.ContainsKey("productName") ? itemDict["productName"].GetString() : null;
+                                     if(!string.IsNullOrEmpty(pName)) {
+                                         await _context.Products.Where(p => p.ProductName.ToLower() == pName.ToLower()).ExecuteUpdateAsync(s => s.SetProperty(p => p.IsActive, false));
+                                         successCount++;
+                                     }
+                                     break;
+                                 case "inventory":
+                                     string iName = itemDict.ContainsKey("productName") ? itemDict["productName"].GetString() : null;
+                                     if(!string.IsNullOrEmpty(iName)) {
+                                         // İlgili ürünün tüm stoklarını pasife çek
+                                          var prod = await _context.Products.FirstOrDefaultAsync(p => p.ProductName.ToLower() == iName.ToLower());
+                                          if(prod != null) {
+                                              await _context.Inventories.Where(i => i.ProductId == prod.Id).ExecuteUpdateAsync(s => s.SetProperty(i => i.IsActive, false));
+                                              successCount++;
+                                          }
+                                     }
+                                     break;
+                             }
+                         }
+                         responseText = successCount > 0 ? $"✅ {successCount} adet kayıt silindi (toplu işlem)." : "Silinecek kayıt bulunamadı.";
+                    }
+                    // 2. FILTER BASED DELETE (Mevcut Mantık)
+                    else 
+                    {
+                        if (command.Filters == null) {
+                            responseText = "Silme işlemi için filtre belirtmelisiniz.";
+                        }
+                        else
+                        {
+                             switch(entity)
+                             {
+                                case "supplier":
+                                    var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.SupplierName.ToLower().Contains(command.Filters.Name.ToLower()));
+                                    if(supplier == null) { responseText = $"'{command.Filters.Name}' adında bir tedarikçi bulunamadı."; break; }
+                                    supplier.IsActive = false;
+                                    await _context.SaveChangesAsync();
+                                    responseText = $"✅ '{supplier.SupplierName}' tedarikçisi silindi (pasif olarak ayarlandı).";
+                                    break;
+                                
+                                case "inventory":
+                                     IQueryable<Inventories> inventoriesToDelete = _context.Inventories;
+                                     if(!string.IsNullOrEmpty(command.Filters.ProductName))
+                                        inventoriesToDelete = inventoriesToDelete.Where(i => i.Product.ProductName.ToLower().Contains(command.Filters.ProductName.ToLower()));
+                                    
+                                     if (command.Filters.ExpirationDate == "expired")
+                                        inventoriesToDelete = inventoriesToDelete.Where(i => i.ExpirationDate < DateTime.UtcNow);
+                                    
+                                    var deletedCount = await inventoriesToDelete.ExecuteUpdateAsync(s => s.SetProperty(i => i.IsActive, false));
+                                    responseText = $"✅ {deletedCount} adet envanter kaydı silindi (pasif yapıldı).";
+                                    break;
 
-                        default:
-                            responseText = $"'{entity}' için silme işlemi henüz tanımlanmamış.";
-                            break;
+                                case "category":
+                                    var categoryToDelete = await _context.Categories.FirstOrDefaultAsync(c => c.CategoryName.ToLower().Contains(command.Filters.Name.ToLower()));
+                                    if (categoryToDelete == null) { responseText = $"'{command.Filters.Name}' kategorisi bulunamadı."; break; }
+                                    categoryToDelete.IsActive = false;
+                                    await _context.SaveChangesAsync();
+                                    responseText = $"✅ '{categoryToDelete.CategoryName}' kategorisi silindi.";
+                                    break;
 
-                        // Category silme - Senaryo 77, 81
-                        case "category":
-                            var categoryToDelete = await _context.Categories
-                                .FirstOrDefaultAsync(c => c.CategoryName.ToLower().Contains(command.Filters.Name.ToLower()));
+                                case "delivery_rule":
+                                    Delivery_Rules ruleToDelete = null;
+                                    if (!string.IsNullOrEmpty(command.Filters.Id))
+                                        ruleToDelete = await _context.Delivery_Rules.FirstOrDefaultAsync(r => r.Id.ToString() == command.Filters.Id);
 
-                            if (categoryToDelete == null)
-                            {
-                                responseText = $"'{command.Filters.Name}' kategorisi bulunamadı.";
-                                break;
-                            }
+                                    if (ruleToDelete == null) { responseText = "Silinecek teslimat kuralı bulunamadı."; break; }
+                                    ruleToDelete.IsActive = false;
+                                    await _context.SaveChangesAsync();
+                                    responseText = $"✅ Teslimat kuralı silindi.";
+                                    break;
 
-                            categoryToDelete.IsActive = false;
-                            await _context.SaveChangesAsync();
-                            responseText = $"✅ '{categoryToDelete.CategoryName}' kategorisi silindi.";
-                            break;
+                                case "product":
+                                    if (command.Filters == null || string.IsNullOrWhiteSpace(command.Filters.Name))
+                                    {
+                                        responseText = "Silinecek ürünün adını belirtmelisiniz.";
+                                        break;
+                                    }
 
-                        // Delivery_Rule silme - Senaryo 79
-                        case "delivery_rule":
-                            Delivery_Rules ruleToDelete = null;
+                                    // Special Case: Explicit Bulk Delete via 'StartsWith:'
+                                    if (command.Filters.Name.StartsWith("StartsWith:"))
+                                    {
+                                        var prefix = command.Filters.Name.Replace("StartsWith:", "").Trim().ToLower();
+                                        if (string.IsNullOrEmpty(prefix)) { responseText = "Başlangıç değeri belirtilmedi."; break; }
 
-                            if (!string.IsNullOrEmpty(command.Filters.Id))
-                            {
-                                ruleToDelete = await _context.Delivery_Rules
-                                    .FirstOrDefaultAsync(r => r.Id.ToString() == command.Filters.Id);
-                            }
+                                        var bulkDeleteCount = await _context.Products
+                                            .Where(p => p.ProductName.ToLower().StartsWith(prefix) && p.IsActive)
+                                            .ExecuteUpdateAsync(s => s.SetProperty(p => p.IsActive, false));
+                                        
+                                        responseText = $"✅ '{prefix}...' ile başlayan {bulkDeleteCount} adet ürün silindi.";
+                                    }
+                                    else
+                                    {
+                                        // Standard Deletion Logic (Safety First)
+                                        var filterName = command.Filters.Name.Trim().ToLower();
 
-                            if (ruleToDelete == null)
-                            {
-                                responseText = "Silinecek teslimat kuralı bulunamadı.";
-                                break;
-                            }
+                                        // 1. Try Exact Match
+                                        var exactProduct = await _context.Products
+                                            .FirstOrDefaultAsync(p => p.ProductName.ToLower() == filterName && p.IsActive);
 
-                            ruleToDelete.IsActive = false;
-                            await _context.SaveChangesAsync();
-                            responseText = $"✅ Teslimat kuralı silindi.";
-                            break;
+                                        if (exactProduct != null)
+                                        {
+                                            exactProduct.IsActive = false;
+                                            await _context.SaveChangesAsync();
+                                            responseText = $"✅ '{exactProduct.ProductName}' başarıyla silindi.";
+                                        }
+                                        else
+                                        {
+                                            // 2. Check Partial Matches
+                                            var partialMatches = await _context.Products
+                                                .Where(p => p.ProductName.ToLower().Contains(filterName) && p.IsActive)
+                                                .ToListAsync();
 
-                        // Product silme - Senaryo 84
-                        case "product":
-                            IQueryable<Products> productsToDelete = _context.Products;
+                                            if (partialMatches.Count == 0)
+                                            {
+                                                responseText = $"❌ '{command.Filters.Name}' isminde silinecek aktif bir ürün bulunamadı.";
+                                            }
+                                            else if (partialMatches.Count == 1)
+                                            {
+                                                partialMatches[0].IsActive = false;
+                                                await _context.SaveChangesAsync();
+                                                responseText = $"✅ '{partialMatches[0].ProductName}' silindi.";
+                                            }
+                                            else
+                                            {
+                                                // 3. Too Many Matches -> Safety Stop
+                                                var names = string.Join(", ", partialMatches.Take(3).Select(p => p.ProductName));
+                                                responseText = $"⚠️ '{command.Filters.Name}' ile eşleşen {partialMatches.Count} farklı ürün bulundu ({names}...). Yanlışlıkla çoklu silme yapmamak için lütfen ürünün tam adını yazın.";
+                                            }
+                                        }
+                                    }
+                                    break;
 
-                            if (command.Filters != null && !string.IsNullOrEmpty(command.Filters.Name))
-                            {
-                                if (command.Filters.Name.Contains("StartsWith:"))
-                                {
-                                    var prefix = command.Filters.Name.Replace("StartsWith:", "").ToLower();
-                                    productsToDelete = productsToDelete.Where(p => p.ProductName.ToLower().StartsWith(prefix));
-                                }
-                                else
-                                {
-                                    productsToDelete = productsToDelete.Where(p => p.ProductName.ToLower().Contains(command.Filters.Name.ToLower()));
-                                }
-                            }
+                                case "unit_type":
+                                    IQueryable<Unit_Types> unitsToDelete = _context.Unit_Types;
+                                    if (command.Filters != null && !string.IsNullOrEmpty(command.Filters.Name))
+                                        unitsToDelete = unitsToDelete.Where(u => u.UnitName.ToLower().Contains(command.Filters.Name.ToLower()));
+                                    var deletedUnitCount = await unitsToDelete.ExecuteUpdateAsync(s => s.SetProperty(u => u.IsActive, false));
+                                    responseText = $"✅ {deletedUnitCount} adet birim tipi silindi.";
+                                    break;
+                                
+                                case "stock_movement":
+                                    Guid moveId = Guid.Empty;
+                                    if(command.Filters != null && !string.IsNullOrEmpty(command.Filters.Id)) 
+                                        Guid.TryParse(command.Filters.Id, out moveId);
+                                    
+                                    if(moveId == Guid.Empty) { responseText = "Silinecek stok hareketinin ID'si belirtilmelidir."; break; }
 
-                            var deletedProductCount = await productsToDelete.ExecuteUpdateAsync(s => s.SetProperty(p => p.IsActive, false));
-                            responseText = $"✅ {deletedProductCount} adet ürün silindi.";
-                            break;
+                                    await _mediator.Send(new DeleteStock_MovementsCommand(moveId));
+                                    responseText = "✅ Stok hareketi başarıyla silindi (Envanter güncellendi).";
+                                    break;
 
-                        // Unit_Type silme - Senaryo 85
-                        case "unit_type":
-                            IQueryable<Unit_Types> unitsToDelete = _context.Unit_Types;
-
-                            if (command.Filters != null && !string.IsNullOrEmpty(command.Filters.Name))
-                                unitsToDelete = unitsToDelete.Where(u => u.UnitName.ToLower().Contains(command.Filters.Name.ToLower()));
-
-                            var deletedUnitCount = await unitsToDelete.ExecuteUpdateAsync(s => s.SetProperty(u => u.IsActive, false));
-                            responseText = $"✅ {deletedUnitCount} adet birim tipi silindi.";
-                            break;
+                                default:
+                                    responseText = $"'{entity}' için silme işlemi tanımlanmamış.";
+                                    break;
+                             }
+                        }
                     }
                 }
                 else

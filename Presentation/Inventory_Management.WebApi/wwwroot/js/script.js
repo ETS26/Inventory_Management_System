@@ -182,75 +182,87 @@ class Dashboard {
      * Ana İstatistik Kartlarını İşle
      */
     processStatsCards(inventories, suppliers, movements, calendarData) {
+        // TÜRKİYE SAATİ AYARI (Tüm hesaplamalar için baz alınacak)
+        const now = new Date();
+        const nowTRT = new Date(now.getTime() + (now.getTimezoneOffset() === 0 ? 3 * 60 * 60 * 1000 : 0)); // Eğer sunucu UTC ise +3 ekle, değilse (lokal) elleme
+        
         // 1. Toplam Envanter Değeri
         const totalInventoryValue = inventories
-            .filter(item => {
-                const status = (item.IsActive !== undefined) ? item.IsActive : item.isActive;
-                return status === true || status === 1;
-            })
+            .filter(item => (item.IsActive !== undefined ? item.IsActive : item.isActive) === true)
             .reduce((sum, item) => sum + (item.quantity * item.salePrice), 0);
 
         // 2. Kritik Stok Sayısı
         const criticalCount = inventories.filter(p => p.quantity <= p.criticalStockQuantity && p.quantity > 0).length;
 
-        // 3. Aktif Tedarikçi Sayısı (Veri zaten filtrelenmiş geldi)
+        // 2b. SKT'si Geçmiş Ürün Sayısı
+        const expiredCount = inventories.filter(p => p.expirationDate && new Date(p.expirationDate) < nowTRT).length;
+
+        // 3. Aktif Tedarikçi Sayısı
         const activeSuppliers = suppliers.length;
 
-        // Date objects for filtering
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Günün başlangıcı
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        // --- ZAMAN ARALIKLARI (TRT Bazlı) ---
+        const todayStart = new Date(nowTRT);
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(todayStart);
+        todayEnd.setDate(todayEnd.getDate() + 1);
 
-        // 4. Günlük Satış
-        const dailySalesValue = movements
-            .filter(m => {
-                const moveDate = new Date(m.createdAt);
-                const isOutcome = (m.moveTypeName || '').toLowerCase().includes('out') || (m.moveTypeName || '').toLowerCase().includes('çıkış');
-                return isOutcome && moveDate >= today && moveDate < tomorrow;
-            })
-            .reduce((sum, m) => sum + (m.payment || 0), 0);
-
-        // 5. Haftalık Beklenen Siparişler
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(startOfWeek.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); // Monday
+        const startOfWeek = new Date(todayStart);
+        startOfWeek.setDate(startOfWeek.getDate() - (todayStart.getDay() === 0 ? 6 : todayStart.getDay() - 1)); // Monday
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(endOfWeek.getDate() + 7);
 
+        const currentMonth = nowTRT.getMonth();
+        const currentYear = nowTRT.getFullYear();
+
+        // --- HESAPLAMALAR ---
+        
+        // Yardımcı: Filtrele ve Topla
+        const getTradeValues = (filterFn) => {
+            const filtered = movements.filter(filterFn);
+            const purchases = filtered
+                .filter(m => (m.moveTypeName || '').toLowerCase().includes('in') || (m.moveTypeName || '').toLowerCase().includes('giriş'))
+                .reduce((sum, m) => sum + (m.payment || 0), 0);
+            const sales = filtered
+                .filter(m => (m.moveTypeName || '').toLowerCase().includes('out') || (m.moveTypeName || '').toLowerCase().includes('çıkış'))
+                .reduce((sum, m) => sum + (m.payment || 0), 0);
+            return { purchases, sales };
+        };
+
+        // Günlük
+        const dailyTrade = getTradeValues(m => {
+            const d = new Date(m.createdAt);
+            return d >= todayStart && d < todayEnd;
+        });
+
+        // Haftalık
+        const weeklyTrade = getTradeValues(m => {
+            const d = new Date(m.createdAt);
+            return d >= startOfWeek && d < endOfWeek;
+        });
+
+        // Aylık
+        const monthlyTrade = getTradeValues(m => {
+            const d = new Date(m.createdAt);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+
+        // 5. Haftalık Beklenen Siparişler (Calendar Data)
         const weeklyExpectedOrders = calendarData.filter(event => {
-            if (!event.start) return false;
-            const eventDate = new Date(event.start);
+            const eventDate = new Date(event.start || event.startRecur);
+            // Eğer event.start yoksa ve recurring ise basitleştirilmiş kontrol
+            if (!event.start && event.daysOfWeek) return true; // Bu hafta içinde tekrarlayanlar varsayımı
             return eventDate >= startOfWeek && eventDate < endOfWeek;
         }).length;
 
-        // 6. Aylık Satış
-        const currentMonth = today.getMonth();
-        const currentYear = today.getFullYear();
-        const monthlySalesValue = movements
-            .filter(m => {
-                const moveDate = new Date(m.createdAt);
-                const isOutcome = (m.moveTypeName || '').toLowerCase().includes('out') || (m.moveTypeName || '').toLowerCase().includes('çıkış');
-                return isOutcome && moveDate.getMonth() === currentMonth && moveDate.getFullYear() === currentYear;
-            })
-            .reduce((sum, m) => sum + (m.payment || 0), 0);
-        
-        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-        const lastYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-        const lastMonthSales = movements
-            .filter(m => {
-                const moveDate = new Date(m.createdAt);
-                const isOutcome = (m.moveTypeName || '').toLowerCase().includes('out');
-                return isOutcome && moveDate.getMonth() === lastMonth && moveDate.getFullYear() === lastYear;
-            })
-            .reduce((sum, m) => sum + (m.payment || 0), 0);
-
         // Kartları Güncelle
-        this.updateStatsCard('totalInventoryValue', totalInventoryValue, 12);
+        this.updateStatsCard('totalInventoryValue', totalInventoryValue, null);
         this.updateStatsCard('criticalStock', criticalCount, null);
         this.updateStatsCard('activeSuppliers', activeSuppliers, null);
-        this.updateStatsCard('monthlySales', monthlySalesValue, Utils.calculatePercentage(monthlySalesValue, lastMonthSales));
-        this.updateStatsCard('dailySales', dailySalesValue, null); // Yüzdelik şimdilik null
+        this.updateStatsCard('dailyTrade', dailyTrade, null);
+        this.updateStatsCard('weeklyTrade', weeklyTrade, null);
+        this.updateStatsCard('monthlyTrade', monthlyTrade, null);
         this.updateStatsCard('weeklyOrders', weeklyExpectedOrders, null);
+        this.updateStatsCard('expiredCount', expiredCount, null);
     }
 
     /**
@@ -258,16 +270,33 @@ class Dashboard {
      */
     updateStatsCard(type, value, percentage) {
         const cards = {
-            totalInventoryValue: { element: document.querySelector('.border-primary h3'), formatter: Utils.formatCurrency, percentElement: document.querySelector('.border-primary .text-success') },
-            criticalStock: { element: document.getElementById('criticalCount'), formatter: (v) => v.toString(), percentElement: null },
-            activeSuppliers: { element: document.querySelector('.border-warning h3'), formatter: (v) => v.toString(), percentElement: null },
-            monthlySales: { element: document.querySelector('.border-success h3'), formatter: Utils.formatCurrency, percentElement: document.querySelector('.border-success .text-success') },
-            dailySales: { element: document.getElementById('dailySales'), formatter: Utils.formatCurrency, percentElement: document.querySelector('.border-info .small') }, // TODO: Yüzde eklenebilir
-            weeklyOrders: { element: document.getElementById('weeklyExpectedOrders'), formatter: (v) => v.toString(), percentElement: null }
+            totalInventoryValue: { element: document.getElementById('totalInventoryValue'), formatter: Utils.formatCurrency },
+            criticalStock: { element: document.getElementById('criticalCount'), formatter: (v) => v.toString() },
+            activeSuppliers: { element: document.getElementById('activeSuppliers'), formatter: (v) => v.toString() },
+            dailyTrade: { element: document.getElementById('dailyTrade'), diffElement: document.getElementById('dailyDiff') },
+            weeklyTrade: { element: document.getElementById('weeklyTrade'), diffElement: document.getElementById('weeklyDiff') },
+            monthlyTrade: { element: document.getElementById('monthlyTrade'), diffElement: document.getElementById('monthlyDiff') },
+            weeklyOrders: { element: document.getElementById('weeklyExpectedOrders'), formatter: (v) => v.toString() },
+            expiredCount: { element: document.getElementById('expiredCount'), formatter: (v) => v.toString() }
         };
 
         const card = cards[type];
         if (!card || !card.element) return;
+
+        // Alış / Satış / Kar mantığına sahip kartlar
+        if (['dailyTrade', 'weeklyTrade', 'monthlyTrade'].includes(type)) {
+            const { purchases, sales } = value;
+            // Alış Sola, Satış Sağa
+            card.element.textContent = `${Utils.formatCurrency(purchases)} / ${Utils.formatCurrency(sales)}`;
+            if (card.diffElement) {
+                const profit = sales - purchases;
+                const colorClass = profit >= 0 ? 'text-success' : 'text-danger';
+                card.diffElement.className = `small mb-0 fw-bold ${colorClass}`;
+                card.diffElement.textContent = `Kar: ${Utils.formatCurrency(profit)}`;
+            }
+            return;
+        }
+
         card.element.textContent = card.formatter(value);
 
         if (card.percentElement && percentage !== null && isFinite(percentage)) {

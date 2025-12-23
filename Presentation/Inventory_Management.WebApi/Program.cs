@@ -56,7 +56,7 @@ try
     });
 
     builder.Services.AddHttpClient();
-
+    builder.Services.AddHostedService<Inventory_Management.WebApi.BackgroundServices.DeliveryNotificationService>();
 
     builder.Services.AddEndpointsApiExplorer();
 

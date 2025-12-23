@@ -76,7 +76,8 @@
                 item.productName,
                 item.moveTypeName,
                 item.batchNumber,
-                item.userName
+                item.userName,
+                item.id
             ];
 
             for (const field of fields) {
@@ -188,6 +189,7 @@
                     </div>
                 </div>
                 <div class="bg-light rounded p-2 mb-3 mt-2 border">
+                    <div class="d-flex justify-content-between align-items-center mb-1"><small class="text-muted">ID:</small><span class="fw-bold text-dark small">${m.id}</span></div>
                     <div class="d-flex justify-content-between align-items-center mb-1"><small class="text-muted">Birim:</small><span class="fw-bold text-dark small">${unitType}</span></div>
                     <div class="d-flex justify-content-between align-items-center mb-1"><small class="text-muted">Seri No:</small>${batchNo}</div>
                     <div class="d-flex justify-content-between align-items-center"><small class="text-muted">SKT:</small>${expInfo}</div>

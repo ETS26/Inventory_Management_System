@@ -105,7 +105,7 @@ namespace Inventory_Management.Persistance.Context
                 switch (entry.State)
                 {
                     case EntityState.Added:
-                        entry.Entity.CreatedAt = DateTime.UtcNow;
+                        entry.Entity.CreatedAt = DateTime.UtcNow.AddHours(3);
                         // IsActive, BaseEntity'de varsayılan olarak true ayarlandığı için burada tekrar ayarlamaya gerek yok.
 
                         // Eğer varlık aynı zamanda IHasCompany arayüzünü uyguluyorsa ve kullanıcı oturum açmışsa, CompanyId'yi ayarla.
@@ -120,7 +120,7 @@ namespace Inventory_Management.Persistance.Context
                         break;
 
                     case EntityState.Modified:
-                        entry.Entity.UpdatedAt = DateTime.UtcNow;
+                        entry.Entity.UpdatedAt = DateTime.UtcNow.AddHours(3);
                         break;
                 }
             }

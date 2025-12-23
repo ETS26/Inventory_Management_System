@@ -172,8 +172,9 @@
 
             if (catRes.ok) {
                 const cats = await catRes.json();
-                document.querySelectorAll('#categorySelect, #updateCategorySelect').forEach(select => {
-                    select.innerHTML = '<option value="" selected disabled>Seçiniz...</option>';
+                document.querySelectorAll('#categorySelect, #updateCategorySelect, #filterCategory').forEach(select => {
+                    const isFilter = select.id.startsWith('filter');
+                    select.innerHTML = isFilter ? '<option value="">Tümü</option>' : '<option value="" selected disabled>Seçiniz...</option>';
                     cats.forEach(c => select.innerHTML += `<option value="${c.id}">${c.categoryName}</option>`);
                 });
                 const countEl = document.getElementById('totalCategoriesCount');
@@ -182,13 +183,51 @@
 
             if (unitRes.ok) {
                 const units = await unitRes.json();
-                document.querySelectorAll('#unitTypeSelect, #updateUnitTypeSelect').forEach(select => {
-                    select.innerHTML = '<option value="" selected disabled>Seçiniz...</option>';
+                document.querySelectorAll('#unitTypeSelect, #updateUnitTypeSelect, #filterUnitType').forEach(select => {
+                    const isFilter = select.id.startsWith('filter');
+                    select.innerHTML = isFilter ? '<option value="">Tümü</option>' : '<option value="" selected disabled>Seçiniz...</option>';
                     units.forEach(u => select.innerHTML += `<option value="${u.id}">${u.unitName}</option>`);
                 });
             }
         } catch (e) { console.error("Dropdown hatası:", e); }
     }
+
+    // --- Filter Functions ---
+    window.applyProductFilters = function() {
+        const categoryId = document.getElementById('filterCategory').value;
+        const unitTypeId = document.getElementById('filterUnitType').value;
+        const status = document.getElementById('filterStatus').value;
+
+        const filtered = allProducts.filter(p => {
+            // Category Filter
+            if (categoryId && p.categoryId !== categoryId) return false;
+            // Unit Type Filter
+            if (unitTypeId && p.unitTypeId !== unitTypeId) return false;
+            // Status Filter
+            if (status !== "") {
+                const isActive = status === "true";
+                if (p.isActive !== isActive) return false;
+            }
+            return true;
+        });
+
+        // Close Modal
+        const modalEl = document.getElementById('filterProductModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        renderProducts(filtered, false);
+    };
+
+    window.clearProductFilters = function() {
+        document.getElementById('filterForm').reset();
+        renderProducts(allProducts, true);
+        
+        // Close Modal
+        const modalEl = document.getElementById('filterProductModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    };
 
     function updateProductStats(data) {
         const totalEl = document.getElementById('totalProductsCount');
