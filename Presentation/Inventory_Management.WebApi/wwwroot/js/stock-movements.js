@@ -169,6 +169,7 @@
         const isIncome = moveName.includes('income') || moveName.includes('giriş') || moveName.includes('in') || moveName.includes('stock in');
         const productName = m.productName || 'Bilinmeyen Ürün';
         const userName = m.userName || 'Sistem';
+        const supplierName = m.supplierName || '-';
 
         return `
         <div class="col-md-6 col-lg-4">
@@ -192,7 +193,8 @@
                     <div class="d-flex justify-content-between align-items-center mb-1"><small class="text-muted">ID:</small><span class="fw-bold text-dark small">${m.id}</span></div>
                     <div class="d-flex justify-content-between align-items-center mb-1"><small class="text-muted">Birim:</small><span class="fw-bold text-dark small">${unitType}</span></div>
                     <div class="d-flex justify-content-between align-items-center mb-1"><small class="text-muted">Seri No:</small>${batchNo}</div>
-                    <div class="d-flex justify-content-between align-items-center"><small class="text-muted">SKT:</small>${expInfo}</div>
+                    <div class="d-flex justify-content-between align-items-center mb-1"><small class="text-muted">SKT:</small>${expInfo}</div>
+                    <div class="d-flex justify-content-between align-items-center"><small class="text-muted">Tedarikçi:</small><span class="fw-bold text-dark small">${supplierName}</span></div>
                     ${m.description ? `<div class="mt-2 border-top pt-1 small text-muted fst-italic"><i class="fas fa-info-circle me-1"></i>${m.description}</div>` : ''}
                 </div>
                 <div class="d-flex justify-content-between align-items-end mt-auto pt-2 border-top">
@@ -385,9 +387,19 @@
             const opt = document.createElement('option');
             opt.value = item.id;
             if (mode === 'inventory') {
-                opt.text = `${item.productName || 'Bilinmeyen'} (Mevcut: ${item.quantity})`;
+                const barcode = item.barcode ? ` [${item.barcode}]` : '';
+                const quantities = item.quantity ? ` - Miktar: ${item.quantity}` : '';
+                const batch = item.batchNumber ? ` - Seri: ${item.batchNumber}` : '';
+                const unit = item.unitTypeName ? ` - ${item.unitTypeName}` : '';
+                const exp = item.expirationDate && !item.expirationDate.startsWith('0001') 
+                    ? ` - SKT: ${new Date(item.expirationDate).toLocaleDateString('tr-TR')}` 
+                    : '';
+                opt.text = `${item.productName || 'Bilinmeyen'}${barcode}${quantities}${unit}${batch}${exp}`;
             } else {
-                opt.text = `${item.productName} ${item.barcode ? ' - ' + item.barcode : ''}`;
+                const barcode = item.barcode ? ` [${item.barcode}]` : '';
+                const category = item.categoryName ? ` -  ${item.categoryName}` : '';
+                const unit = item.unitTypeName ? ` -  ${item.unitTypeName}` : '';
+                opt.text = `${item.productName}${barcode}${category}${unit}`;
             }
             selectElement.appendChild(opt);
         });

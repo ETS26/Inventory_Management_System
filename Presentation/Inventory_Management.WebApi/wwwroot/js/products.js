@@ -1,6 +1,8 @@
 (function () {
     const token = localStorage.getItem('jwtToken');
     let allProducts = [];
+    let allCategories = []; // Global
+    let allUnitTypes = []; // Global
 
     // --- Helper Functions ---
     function debounce(func, delay = 300) {
@@ -171,23 +173,33 @@
             ]);
 
             if (catRes.ok) {
-                const cats = await catRes.json();
+                allCategories = await catRes.json();
                 document.querySelectorAll('#categorySelect, #updateCategorySelect, #filterCategory').forEach(select => {
                     const isFilter = select.id.startsWith('filter');
                     select.innerHTML = isFilter ? '<option value="">Tümü</option>' : '<option value="" selected disabled>Seçiniz...</option>';
-                    cats.forEach(c => select.innerHTML += `<option value="${c.id}">${c.categoryName}</option>`);
+                    allCategories.forEach(c => {
+                        if (isFilter || c.isActive !== false) {
+                            select.innerHTML += `<option value="${c.id}">${c.categoryName}</option>`;
+                        }
+                    });
                 });
                 const countEl = document.getElementById('totalCategoriesCount');
-                if (countEl) countEl.innerText = cats.length;
+                if (countEl) countEl.innerText = allCategories.filter(c => c.isActive !== false).length;
             }
 
             if (unitRes.ok) {
-                const units = await unitRes.json();
+                allUnitTypes = await unitRes.json();
                 document.querySelectorAll('#unitTypeSelect, #updateUnitTypeSelect, #filterUnitType').forEach(select => {
                     const isFilter = select.id.startsWith('filter');
                     select.innerHTML = isFilter ? '<option value="">Tümü</option>' : '<option value="" selected disabled>Seçiniz...</option>';
-                    units.forEach(u => select.innerHTML += `<option value="${u.id}">${u.unitName}</option>`);
+                    allUnitTypes.forEach(u => {
+                        if (isFilter || u.isActive !== false) { // Sadece aktifleri dropdowna ekle (opsiyonel ama mantıklı)
+                            select.innerHTML += `<option value="${u.id}">${u.unitName}</option>`;
+                        }
+                    });
                 });
+                const unitCountEl = document.getElementById('totalUnitTypesCount');
+                if (unitCountEl) unitCountEl.innerText = allUnitTypes.filter(u => u.isActive !== false).length;
             }
         } catch (e) { console.error("Dropdown hatası:", e); }
     }
@@ -424,47 +436,259 @@
         }
     };
 
-    window.saveCategory = async function () {
-        const name = document.getElementById('catNameInput').value;
-        const description = document.getElementById('catDescInput').value;
-        const saveButton = document.querySelector('#addCategoryModal .btn-primary');
+    // --- CATEGORY MANAGEMENT ---
+    window.openCategoryManager = function() {
+        renderCategoryManagerList();
+        const modal = new bootstrap.Modal(document.getElementById('categoryManagerModal'));
+        modal.show();
+    };
 
-        if (!name) {
-            alert("⚠️ Lütfen kategori adını giriniz.");
-            return;
-        }
+    window.renderCategoryManagerList = function() {
+        const tbody = document.getElementById('categoryListBody');
+        tbody.innerHTML = '';
+        
+        // Sort: Active first, then by name
+        const sorted = [...allCategories].sort((a, b) => {
+            if (a.isActive === b.isActive) return a.categoryName.localeCompare(b.categoryName);
+            return a.isActive ? -1 : 1;
+        });
+
+        sorted.forEach(c => {
+            const isPassive = c.isActive === false;
+            const badge = isPassive ? '<span class="badge bg-danger">Pasif</span>' : '<span class="badge bg-success">Aktif</span>';
+            const rowClass = isPassive ? 'table-secondary text-muted' : '';
+            const desc = c.description || '-';
+            const catJson = JSON.stringify(c).replace(/"/g, '&quot;');
+
+            const actionBtn = isPassive 
+                ? `<button class="btn btn-sm btn-outline-success" onclick="toggleCategoryStatus('${c.id}', true)" title="Aktif Et"><i class="fas fa-undo"></i></button>`
+                : `<button class="btn btn-sm btn-outline-primary me-1" onclick='editCategory(${catJson})' title="Düzenle"><i class="fas fa-pen"></i></button>
+                   <button class="btn btn-sm btn-outline-danger" onclick="toggleCategoryStatus('${c.id}', false)" title="Pasife Al"><i class="fas fa-trash"></i></button>`;
+
+            tbody.innerHTML += `
+                <tr class="${rowClass}">
+                    <td class="fw-bold">${c.categoryName}</td>
+                    <td class="small text-truncate" style="max-width: 150px;">${desc}</td>
+                    <td>${badge}</td>
+                    <td class="text-end">${actionBtn}</td>
+                </tr>
+            `;
+        });
+    };
+
+    window.handleCategorySubmit = async function() {
+        const id = document.getElementById('catManId').value;
+        const name = document.getElementById('catManName').value;
+        const desc = document.getElementById('catManDesc').value;
+        const btn = document.getElementById('catManSubmitBtn');
+
+        if (!name) { alert("Lütfen kategori adını giriniz."); return; }
 
         const payload = {
             categoryName: name,
-            description: description,
+            description: desc,
             isActive: true
         };
 
-        const originalText = saveButton.innerHTML;
-        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
-        saveButton.disabled = true;
+        if (id) payload.id = id;
+
+        const url = '/api/Categories';
+        const method = id ? 'PUT' : 'POST';
+
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
         try {
-            const res = await fetch('/api/Categories', {
-                method: 'POST',
+            const res = await fetch(url, {
+                method: method,
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             if (res.ok) {
-                alert("✅ Kategori başarıyla eklendi!");
-                location.reload();
+                alert(`Kategori başarıyla ${id ? 'güncellendi' : 'eklendi'}!`);
+                resetCategoryForm();
+                await loadProductDropdowns(); // Reload data
+                renderCategoryManagerList();
             } else {
                 const err = await res.json();
-                alert("Hata: " + (err.message || "Kaydedilemedi."));
+                alert("Hata: " + (err.message || "İşlem başarısız."));
             }
-        } catch (e) {
-            console.error(e);
-            alert("Sunucu hatası.");
-        } finally {
-            saveButton.innerHTML = originalText;
-            saveButton.disabled = false;
-        }
+        } catch (e) { console.error(e); alert("Sunucu hatası."); }
+        finally { btn.disabled = false; btn.innerHTML = originalText; }
+    };
+
+    window.editCategory = function(cat) {
+        document.getElementById('catManId').value = cat.id;
+        document.getElementById('catManName').value = cat.categoryName;
+        document.getElementById('catManDesc').value = cat.description || '';
+        
+        document.getElementById('catFormTitle').innerHTML = '<i class="fas fa-edit me-1"></i>KATEGORİ DÜZENLE';
+        document.getElementById('catManSubmitBtn').innerText = 'Güncelle';
+        document.getElementById('catManSubmitBtn').classList.replace('btn-primary', 'btn-warning');
+        document.getElementById('catManCancelBtn').classList.remove('d-none');
+    };
+
+    window.resetCategoryForm = function() {
+        document.getElementById('categoryManagerForm').reset();
+        document.getElementById('catManId').value = '';
+        
+        document.getElementById('catFormTitle').innerHTML = '<i class="fas fa-plus-circle me-1"></i>YENİ KATEGORİ EKLE';
+        const btn = document.getElementById('catManSubmitBtn');
+        btn.innerText = 'Ekle';
+        btn.classList.replace('btn-warning', 'btn-primary');
+        document.getElementById('catManCancelBtn').classList.add('d-none');
+    };
+
+    window.toggleCategoryStatus = async function(id, isActive) {
+        if (!confirm(`Bu kategoriyi ${isActive ? 'aktif etmek' : 'pasife almak'} istediğinize emin misiniz?`)) return;
+
+        try {
+            // Assuming the API supports toggle via PUT or a specific endpoint. 
+            // If standard PUT is used, we need the full object. 
+            // Let's find the object locally first.
+            const cat = allCategories.find(c => c.id === id);
+            if (!cat) return;
+
+            const payload = { ...cat, isActive: isActive };
+            
+            const res = await fetch(`/api/Categories`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                await loadProductDropdowns();
+                renderCategoryManagerList();
+            } else {
+                alert("Durum değiştirilemedi.");
+            }
+        } catch (e) { console.error(e); alert("Hata oluştu."); }
+    };
+
+    // --- UNIT TYPE MANAGEMENT ---
+    window.openUnitTypeManager = function() {
+        renderUnitTypeManagerList();
+        const modal = new bootstrap.Modal(document.getElementById('unitTypeManagerModal'));
+        modal.show();
+    };
+
+    window.renderUnitTypeManagerList = function() {
+        const tbody = document.getElementById('unitTypeListBody');
+        tbody.innerHTML = '';
+        
+        const sorted = [...allUnitTypes].sort((a, b) => {
+            if (a.isActive === b.isActive) return a.unitName.localeCompare(b.unitName);
+            return a.isActive ? -1 : 1;
+        });
+
+        sorted.forEach(u => {
+            const isPassive = u.isActive === false;
+            const badge = isPassive ? '<span class="badge bg-danger">Pasif</span>' : '<span class="badge bg-success">Aktif</span>';
+            const rowClass = isPassive ? 'table-secondary text-muted' : '';
+            const desc = u.description || '-';
+            const unitJson = JSON.stringify(u).replace(/"/g, '&quot;');
+
+            const actionBtn = isPassive 
+                ? `<button class="btn btn-sm btn-outline-success" onclick="toggleUnitTypeStatus('${u.id}', true)" title="Aktif Et"><i class="fas fa-undo"></i></button>`
+                : `<button class="btn btn-sm btn-outline-primary me-1" onclick='editUnitType(${unitJson})' title="Düzenle"><i class="fas fa-pen"></i></button>
+                   <button class="btn btn-sm btn-outline-danger" onclick="toggleUnitTypeStatus('${u.id}', false)" title="Pasife Al"><i class="fas fa-trash"></i></button>`;
+
+            tbody.innerHTML += `
+                <tr class="${rowClass}">
+                    <td class="fw-bold">${u.unitName}</td>
+                    <td class="small text-truncate" style="max-width: 150px;">${desc}</td>
+                    <td>${badge}</td>
+                    <td class="text-end">${actionBtn}</td>
+                </tr>
+            `;
+        });
+    };
+
+    window.handleUnitTypeSubmit = async function() {
+        const id = document.getElementById('unitManId').value;
+        const name = document.getElementById('unitManName').value;
+        const desc = document.getElementById('unitManDesc').value;
+        const btn = document.getElementById('unitManSubmitBtn');
+
+        if (!name) { alert("Lütfen birim adını giriniz."); return; }
+
+        const payload = { unitName: name, description: desc, isActive: true };
+        if (id) payload.id = id;
+
+        const url = '/api/UnitTypes';
+        const method = id ? 'PUT' : 'POST';
+
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert(`Birim tipi başarıyla ${id ? 'güncellendi' : 'eklendi'}!`);
+                resetUnitTypeForm();
+                await loadProductDropdowns();
+                renderUnitTypeManagerList();
+            } else {
+                const err = await res.json();
+                alert("Hata: " + (err.message || "İşlem başarısız."));
+            }
+        } catch (e) { console.error(e); alert("Sunucu hatası."); }
+        finally { btn.disabled = false; btn.innerHTML = originalText; }
+    };
+
+    window.editUnitType = function(unit) {
+        document.getElementById('unitManId').value = unit.id;
+        document.getElementById('unitManName').value = unit.unitName;
+        document.getElementById('unitManDesc').value = unit.description || '';
+        
+        document.getElementById('unitFormTitle').innerHTML = '<i class="fas fa-edit me-1"></i>BİRİM DÜZENLE';
+        document.getElementById('unitManSubmitBtn').innerText = 'Güncelle';
+        document.getElementById('unitManSubmitBtn').classList.replace('btn-primary', 'btn-warning');
+        document.getElementById('unitManCancelBtn').classList.remove('d-none');
+    };
+
+    window.resetUnitTypeForm = function() {
+        document.getElementById('unitManagerForm').reset();
+        document.getElementById('unitManId').value = '';
+        
+        document.getElementById('unitFormTitle').innerHTML = '<i class="fas fa-plus-circle me-1"></i>YENİ BİRİM TİPİ EKLE';
+        const btn = document.getElementById('unitManSubmitBtn');
+        btn.innerText = 'Ekle';
+        btn.classList.replace('btn-warning', 'btn-primary');
+        document.getElementById('unitManCancelBtn').classList.add('d-none');
+    };
+
+    window.toggleUnitTypeStatus = async function(id, isActive) {
+        if (!confirm(`Bu birim tipini ${isActive ? 'aktif etmek' : 'pasife almak'} istediğinize emin misiniz?`)) return;
+
+        try {
+            const unit = allUnitTypes.find(u => u.id === id);
+            if (!unit) return;
+
+            const payload = { ...unit, isActive: isActive };
+            
+            const res = await fetch(`/api/UnitTypes`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                await loadProductDropdowns();
+                renderUnitTypeManagerList();
+            } else {
+                alert("Durum değiştirilemedi.");
+            }
+        } catch (e) { console.error(e); alert("Hata oluştu."); }
     };
 
     window.openProductOrderModal = async function(product) {
