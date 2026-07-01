@@ -1,0 +1,27 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "Jwt": {
+    "Secret": "YOUR_JWT_SECRET_KEY_MIN_32_CHARACTERS_LONG",
+    "Issuer": "https://localhost:7057/",
+    "Audience": "https://localhost:7057/",
+    "ExpiryInMinutes": 60
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_SERVER_NAME;Initial Catalog=Inventory_Management_DB;Integrated Security=True;TrustServerCertificate=true"
+  },
+  "Gemini": {
+    "ApiKey": "YOUR_GEMINI_API_KEY"
+  },
+  "EmailSettings": {
+    "SmtpHost": "smtp.gmail.com",
+    "SmtpPort": 587,
+    "SenderEmail": "your-email@gmail.com",
+    "SenderPassword": "YOUR_GMAIL_APP_PASSWORD"
+  }
+}
